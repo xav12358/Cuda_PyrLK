@@ -48,7 +48,6 @@ __global__ void lkflow(
 
     // copy into local memory
     __shared__ float2 PrevPtL;
-
     if (threadIdx.x ==0 && threadIdx.y == 0)
     {
         PrevPtL.x=  prevPt[blockIdx.x].x*1.0/(1<<(ilevel))- (float)(HALF_WIN);
@@ -66,10 +65,6 @@ __global__ void lkflow(
             CurrentPt.x = PrevPtL.x+x;
             CurrentPt.y = PrevPtL.y+y;
             smem[y+1][x+1] =  tex2D(Image_I,CurrentPt.x,CurrentPt.y);//read_imageui( I, bilinSampler, PrevPtL+(float2)(x,y) ).x;
-            //            ftmp[x+1+(y+1)*(HALF_WIN*2+3)].x = x;//CurrentPt.x;
-            //            ftmp[x+1+(y+1)*(HALF_WIN*2+3)].y = y;//CurrentPt.y;
-            ftmp[x+1+(y+1)*(HALF_WIN*2+3)].x = tex2D(Image_I,CurrentPt.x,CurrentPt.y);//CurrentPt.x;
-            ftmp[x+1+(y+1)*(HALF_WIN*2+3)].y = tex2D(Image_I,CurrentPt.x,CurrentPt.y);//CurrentPt.y;
         }
     }
     syncthreads();
@@ -286,36 +281,10 @@ void PyrLK_gpu::run_sparse(u_int8_t  *Idata,u_int8_t*Jdata,int h,int w)
     PyrDown_gpu *ptPyrDownI = new PyrDown_gpu(h,w);
     ptPyrDownI->run(h,w,Idata);
 
-    cv::Mat imageL0(h,w,CV_8U);
-    cv::Mat imageL1(h/2,w/2,CV_8U);
-    cv::Mat imageL2(h/4,w/4,CV_8U);
-    cv::Mat imageL3(h/8,w/8,CV_8U);
-
-    checkCudaErrors(cudaMemcpy(imageL0.data, ptPyrDownI->ptImageL0,h*w*sizeof(uint8_t), cudaMemcpyDeviceToHost));
-    checkCudaErrors(cudaMemcpy(imageL1.data, ptPyrDownI->ptImageL1,h*w*sizeof(uint8_t)/4, cudaMemcpyDeviceToHost));
-    checkCudaErrors(cudaMemcpy(imageL2.data, ptPyrDownI->ptImageL2,h*w*sizeof(uint8_t)/16, cudaMemcpyDeviceToHost));
-    checkCudaErrors(cudaMemcpy(imageL3.data, ptPyrDownI->ptImageL3,h*w*sizeof(uint8_t)/64, cudaMemcpyDeviceToHost));
-    imshow("imageGrayL0",imageL0);
-    imshow("imageGrayL1",imageL1);
-    imshow("imageGrayL2",imageL2);
-    imshow("imageGrayL3",imageL3);
-    cv::waitKey(-1);
-
-
     std::cout << "Compute PyrDown L2" << std::endl;
     PyrDown_gpu *ptPyrDownJ = new PyrDown_gpu(h,w);
     ptPyrDownJ->run(h,w,Jdata);
 
-
-    checkCudaErrors(cudaMemcpy(imageL0.data, ptPyrDownJ->ptImageL0,h*w*sizeof(uint8_t), cudaMemcpyDeviceToHost));
-    checkCudaErrors(cudaMemcpy(imageL1.data, ptPyrDownJ->ptImageL1,h*w*sizeof(uint8_t)/4, cudaMemcpyDeviceToHost));
-    checkCudaErrors(cudaMemcpy(imageL2.data, ptPyrDownJ->ptImageL2,h*w*sizeof(uint8_t)/16, cudaMemcpyDeviceToHost));
-    checkCudaErrors(cudaMemcpy(imageL3.data, ptPyrDownJ->ptImageL3,h*w*sizeof(uint8_t)/64, cudaMemcpyDeviceToHost));
-    imshow("imageGrayL0",imageL0);
-    imshow("imageGrayL1",imageL1);
-    imshow("imageGrayL2",imageL2);
-    imshow("imageGrayL3",imageL3);
-    cv::waitKey(-1);
 
     int iNbPt = 5;
 
@@ -374,17 +343,14 @@ void PyrLK_gpu::run_sparse(u_int8_t  *Idata,u_int8_t*Jdata,int h,int w)
     for( int i=lvls-1; i>=0 ; i-- )
     {
 
-        std::cout << "***************level " << i << " valstep " << valstep << " pow(2,i); " << pow(2,i) << " h/dlevel * w/dlevel "<< h/pow(2,i) * w/pow(2,i) <<std::endl;
-
+        std::cout << "***************level " << i << " valstep " << valstep << " pow(2,i); " << pow(2,i) << " h/dlevel * w/dlevel "<< h/pow(2,i) << "  " <<w/pow(2,i) <<std::endl;
         int dlevel = pow(2,i);
-
         switch(i)
         {
         case 0:
             // create texture object
             checkCudaErrors(cudaBindTexture2D(0,&Image_I,ptPyrDownI->ptImageL0,&desc,h/dlevel , w/dlevel,w/dlevel));
             checkCudaErrors(cudaBindTexture2D(0,&Image_J,ptPyrDownJ->ptImageL0,&desc,h/dlevel , w/dlevel,w/dlevel));
-
             break;
 
         case 1:
@@ -398,35 +364,13 @@ void PyrLK_gpu::run_sparse(u_int8_t  *Idata,u_int8_t*Jdata,int h,int w)
             break;
 
         case 3:
-            checkCudaErrors(cudaBindTexture2D(0,&Image_I,ptPyrDownI->ptImageL3,&desc,h/dlevel , w/dlevel/16,w/dlevel/16));
-            checkCudaErrors(cudaBindTexture2D(0,&Image_J,ptPyrDownJ->ptImageL3,&desc,h/dlevel , w/dlevel/16,w/dlevel/16));
+            checkCudaErrors(cudaBindTexture2D(0,&Image_I,ptPyrDownI->ptImageL3,&desc,60 , 80,80));
+            checkCudaErrors(cudaBindTexture2D(0,&Image_J,ptPyrDownJ->ptImageL3,&desc,60 , 80,80));
             break;
 
         }
 
         lkflow<<<blocks,threads>>>(PrevPt_CU,NextPt_CU,uStatus_CU,ftmp_CU,h/dlevel,w/dlevel,10,i);
-
-//        checkCudaErrors( cudaMemcpy(ftmp, ftmp_CU, valstep*valstep*sizeof(float2), cudaMemcpyDeviceToHost) );
-
-////        for(int j=0;j<valstep;j++)
-////        {
-////            for(int i=0;i<valstep;i++)
-////            {
-////                std::cout << ftmp[i+j*valstep].x << " ";
-////            }
-////            std::cout << std::endl;
-////        }
-
-////        std::cout << std::endl<<"----------------------------" << std::endl;
-////        for(int j=0;j<valstep;j++)
-////        {
-////            for(int i=0;i<valstep;i++)
-////            {
-////                std::cout << ftmp[i+j*valstep].y << " ";
-////            }
-////            std::cout << std::endl;
-////        }
-
 
         checkCudaErrors(cudaUnbindTexture(Image_I));
         checkCudaErrors(cudaUnbindTexture(Image_J));
@@ -437,7 +381,6 @@ void PyrLK_gpu::run_sparse(u_int8_t  *Idata,u_int8_t*Jdata,int h,int w)
 
 
     cv::Mat *ImageConcat = new cv::Mat(h, w*2, CV_8U);
-
     cv::Mat left(*ImageConcat, cv::Rect(0, 0, w, h));
     cv::Mat Image1(h,w,CV_8U,Idata);
     Image1.copyTo(left);
