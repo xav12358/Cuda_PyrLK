@@ -15,10 +15,11 @@ CONFIG   -= app_bundle
 TEMPLATE = app
 
 
-SOURCES += main.cpp \
-    system.cpp
+SOURCES += src/main.cpp \
+    src/system.cpp
 
-
+HEADERS += \
+    system.h
 
 #######################################################################################
 
@@ -44,12 +45,14 @@ LIBS += -lopencv_calib3d
 
 #######################################################################################
 # This makes the .cu files appear in your project
-OTHER_FILES +=  ./pyrdown.h
-OTHER_FILES +=  ./pyrlk.h
+OTHER_FILES +=  ./cuda/pyrdown.h
+OTHER_FILES +=  ./cuda/pyrlk.h
+OTHER_FILES +=  ./cuda/keyframe.h
 
 # CUDA settings <-- may change depending on your system
-CUDA_SOURCES += ./pyrdown.cu
-CUDA_SOURCES += ./pyrlk.cu
+CUDA_SOURCES += ./cuda/pyrdown.cu
+CUDA_SOURCES += ./cuda/pyrlk.cu
+CUDA_SOURCES += ./cuda/keyframe.cu
 CUDA_SDK = /usr/lib/nvidia-cuda-toolkit             #/usr/include/   # Path to cuda SDK install
 CUDA_DIR = /usr/lib/nvidia-cuda-toolkit             # Path to cuda toolkit install
 
@@ -100,6 +103,5 @@ LIBS += -L /usr/lib/x86_64-linux-gnu -lcuda -lcudart
 
 DISTFILES +=
 
-HEADERS += \
-    system.h
+
 

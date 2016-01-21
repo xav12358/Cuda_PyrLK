@@ -340,7 +340,7 @@ void PyrLK_gpu::run_sparse(u_int8_t  *Idata,u_int8_t*Jdata,int h,int w)
 
     dim3 threads(BLOCK_SIZE_X, BLOCK_SIZE_Y);
     dim3 blocks(iNbPt, 1);
-    for( int i=lvls-1; i>=0 ; i-- )
+    for( int i=lvls; i>=0 ; i-- )
     {
 
         std::cout << "***************level " << i << " valstep " << valstep << " pow(2,i); " << pow(2,i) << " h/dlevel * w/dlevel "<< h/pow(2,i) << "  " <<w/pow(2,i) <<std::endl;
@@ -349,23 +349,24 @@ void PyrLK_gpu::run_sparse(u_int8_t  *Idata,u_int8_t*Jdata,int h,int w)
         {
         case 0:
             // create texture object
-            checkCudaErrors(cudaBindTexture2D(0,&Image_I,ptPyrDownI->ptImageL0,&desc,h/dlevel , w/dlevel,w/dlevel));
-            checkCudaErrors(cudaBindTexture2D(0,&Image_J,ptPyrDownJ->ptImageL0,&desc,h/dlevel , w/dlevel,w/dlevel));
+            checkCudaErrors(cudaBindTexture2D(0,&Image_I,ptPyrDownI->ptImageL0,&desc,w/dlevel , h/dlevel,w/dlevel));
+            checkCudaErrors(cudaBindTexture2D(0,&Image_J,ptPyrDownJ->ptImageL0,&desc,w/dlevel , h/dlevel,w/dlevel));
             break;
 
         case 1:
-            checkCudaErrors(cudaBindTexture2D(0,&Image_I,ptPyrDownI->ptImageL1,&desc,h/dlevel , w/dlevel,w/dlevel));
-            checkCudaErrors(cudaBindTexture2D(0,&Image_J,ptPyrDownJ->ptImageL1,&desc,h/dlevel , w/dlevel,w/dlevel));
+            checkCudaErrors(cudaBindTexture2D(0,&Image_I,ptPyrDownI->ptImageL1,&desc,w/dlevel , h/dlevel,w/dlevel));
+            checkCudaErrors(cudaBindTexture2D(0,&Image_J,ptPyrDownJ->ptImageL1,&desc,w/dlevel , h/dlevel,w/dlevel));
             break;
 
         case 2:
-            checkCudaErrors(cudaBindTexture2D(0,&Image_I,ptPyrDownI->ptImageL2,&desc,h/dlevel , w/dlevel,w/dlevel));
-            checkCudaErrors(cudaBindTexture2D(0,&Image_J,ptPyrDownJ->ptImageL2,&desc,h/dlevel , w/dlevel,w/dlevel));
+            checkCudaErrors(cudaBindTexture2D(0,&Image_I,ptPyrDownI->ptImageL2,&desc,w/dlevel , h/dlevel,w/dlevel));
+            checkCudaErrors(cudaBindTexture2D(0,&Image_J,ptPyrDownJ->ptImageL2,&desc,w/dlevel , h/dlevel,w/dlevel));
             break;
-
         case 3:
-            checkCudaErrors(cudaBindTexture2D(0,&Image_I,ptPyrDownI->ptImageL3,&desc,60 , 80,80));
-            checkCudaErrors(cudaBindTexture2D(0,&Image_J,ptPyrDownJ->ptImageL3,&desc,60 , 80,80));
+            //dlevel = 8;
+            std::cout << "dlevel " << dlevel << std::endl;
+            checkCudaErrors(cudaBindTexture2D(0,&Image_I,ptPyrDownI->ptImageL3,&desc,w/dlevel , h/dlevel,w/dlevel));
+            checkCudaErrors(cudaBindTexture2D(0,&Image_J,ptPyrDownJ->ptImageL3,&desc,w/dlevel , h/dlevel,w/dlevel));
             break;
 
         }
