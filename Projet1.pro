@@ -19,7 +19,7 @@ SOURCES += src/main.cpp \
     src/system.cpp
 
 HEADERS += \
-    system.h
+    include/system.h
 
 #######################################################################################
 
