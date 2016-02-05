@@ -1,8 +1,18 @@
 #include "keyframe.h"
 
 
-#include <cv.h>
-#include <opencv2/highgui/highgui.hpp>
+Level::Level(int rows,int cols)
+{
+
+}
+
+
+//Level::Level& operator=(const Level &rhs)
+//{
+
+
+//}
+
 
 
 

@@ -340,7 +340,7 @@ void PyrLK_gpu::run_sparse(u_int8_t  *Idata,u_int8_t*Jdata,int h,int w)
 
     dim3 threads(BLOCK_SIZE_X, BLOCK_SIZE_Y);
     dim3 blocks(iNbPt, 1);
-    for( int i=lvls; i>=0 ; i-- )
+    for( int i=lvls-1; i>=0 ; i-- )
     {
 
         std::cout << "***************level " << i << " valstep " << valstep << " pow(2,i); " << pow(2,i) << " h/dlevel * w/dlevel "<< h/pow(2,i) << "  " <<w/pow(2,i) <<std::endl;
@@ -365,13 +365,15 @@ void PyrLK_gpu::run_sparse(u_int8_t  *Idata,u_int8_t*Jdata,int h,int w)
         case 3:
             //dlevel = 8;
             std::cout << "dlevel " << dlevel << std::endl;
-            checkCudaErrors(cudaBindTexture2D(0,&Image_I,ptPyrDownI->ptImageL3,&desc,w/dlevel , h/dlevel,w/dlevel));
-            checkCudaErrors(cudaBindTexture2D(0,&Image_J,ptPyrDownJ->ptImageL3,&desc,w/dlevel , h/dlevel,w/dlevel));
+//            checkCudaErrors(cudaBindTexture2D(0,&Image_I,ptPyrDownI->ptImageL3,&desc,w/dlevel , h/dlevel,w/dlevel));
+//            checkCudaErrors(cudaBindTexture2D(0,&Image_J,ptPyrDownJ->ptImageL3,&desc,w/dlevel , h/dlevel,w/dlevel));
+            //checkCudaErrors(cudaBindTexture2D(0,&Image_I,ptPyrDownI->ptImageL3,&desc,160 , 120,160));
+            //checkCudaErrors(cudaBindTexture2D(0,&Image_J,ptPyrDownJ->ptImageL3,&desc,160 , 120,160));
             break;
 
         }
 
-        lkflow<<<blocks,threads>>>(PrevPt_CU,NextPt_CU,uStatus_CU,ftmp_CU,h/dlevel,w/dlevel,10,i);
+        lkflow<<<blocks,threads>>>(PrevPt_CU,NextPt_CU,uStatus_CU,ftmp_CU,h/dlevel,w/dlevel,15,i);
 
         checkCudaErrors(cudaUnbindTexture(Image_I));
         checkCudaErrors(cudaUnbindTexture(Image_J));

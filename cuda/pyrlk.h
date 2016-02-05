@@ -3,9 +3,12 @@
 
 #include <cuda.h>
 #include <cuda_runtime.h>
+#include <cuda_runtime_api.h>
 #include <stdio.h>
 
-#include <cuda_runtime_api.h>    // includes cuda.h and cuda_runtime_api.h
+
+
+#include "global_var.h"
 
 class PyrLK_gpu
 {

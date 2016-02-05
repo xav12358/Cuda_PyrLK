@@ -5,6 +5,7 @@
 #include <opencv/highgui.h>
 
 using namespace cv;
+
 class System
 {
 

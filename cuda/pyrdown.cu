@@ -2,7 +2,6 @@
 #include <math.h>
 
 
-
 #include <cv.h>
 #include <opencv2/highgui/highgui.hpp>
 
@@ -169,7 +168,6 @@ __global__ void PyrDown_y_g(u_int8_t *ptGrayIn,u_int8_t *ptGrayOut,  int  w, int
 ///
 PyrDown_gpu::PyrDown_gpu(int rows,int cols)
 {
-
     checkCudaErrors(cudaMalloc((void **)&ptImageL0,  rows * cols * sizeof(u_int8_t)));
     checkCudaErrors(cudaMalloc((void **)&ptImageTmp, rows * cols * sizeof(u_int8_t)));
     checkCudaErrors(cudaMalloc((void **)&ptImageL1,  rows * cols * sizeof(u_int8_t)/4));
