@@ -26,9 +26,11 @@ public:
     int threshold;
 
     Fast_gpu(int cols, int rows,int maxKeypoints);
+    static int run_calcKeypoints(u_int8_t * img,int cols,int rows, short2* kpLoc, int maxKeypoints, int* score, int threshold);
+    static int run_nonmaxSuppression_gpu(const short2* kpLoc, int count, int* score,int rows,int cols, short2* loc, float* response);
     int run_calcKeypoints(u_int8_t * img, int threshold);
     int run_nonmaxSuppression(int nbKeypoints);
-    static int calcKeypoints(u_int8_t * img,int cols,int rows, short2* kpLoc, int maxKeypoints, int* score, int threshold);
+
 };
 
 __device__                  u_int8_t tex_u(const u_int8_t * ptData,int y,int x,int step);

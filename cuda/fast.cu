@@ -24,6 +24,22 @@ Fast_gpu::Fast_gpu(int cols, int rows,int maxKeypoints)
 }
 
 
+int Fast_gpu::run_calcKeypoints(u_int8_t * img,int cols,int rows, short2* kpLoc, int maxKeypoints, int* score, int threshold)
+{
+
+    int nbKeypoints =  calcKeypoints_gpu(img, cols, rows, kpLoc, maxKeypoints ,  score, threshold);
+
+    return nbKeypoints;
+}
+
+
+int Fast_gpu::run_nonmaxSuppression_gpu(const short2* kpLoc, int count, int* score,int rows,int cols, short2* kpLocFinal, float* scoreFinal)
+{
+    int nbKeypointsNonMaxSuppression = nonmaxSuppression_gpu(kpLoc, count, score,rows,cols, kpLocFinal, scoreFinal);
+
+    return nbKeypointsNonMaxSuppression;
+}
+
 ////////////////////////////////
 /// \brief Fast_gpu::run_calcKeypoints
 /// \param img
@@ -42,7 +58,6 @@ int Fast_gpu::run_calcKeypoints(u_int8_t * img,  int threshold)
     int nbKeypointsNonMaxSuppression = nonmaxSuppression_gpu(kpLoc, nbKeypoints, score,rows,cols, kpLocFinal, scoreFinal);
 
     return nbKeypoints;
-//    qDebug() << "nbKeypoints " << nbKeypoints << " nbKeypointsNonMaxSupperssion " << nbKeypointsNonMaxSupperssion;
 
 }
 
@@ -311,13 +326,14 @@ __device__ int cornerScore(const uint C[4], const int v, const int threshold)
 /// \param threshold
 /// \param calcScore
 ///
+#define MASK 3
 __global__ void calcKeypoints(const u_int8_t* img,int cols ,int rows,short2* kpLoc, const unsigned int maxKeypoints, int *score, const int threshold,bool calcScore)
 {
 
-    const int j = threadIdx.x + blockIdx.x * blockDim.x + 3;
-    const int i = threadIdx.y + blockIdx.y * blockDim.y + 3;
+    const int j = threadIdx.x + blockIdx.x * blockDim.x + MASK;//3;
+    const int i = threadIdx.y + blockIdx.y * blockDim.y + MASK;//3;
 
-    if (i < rows - 3 && j < cols - 3 )
+    if ( i < rows - MASK  && j < cols - MASK )
     {
         int v;
         uint C[4] = {0,0,0,0};

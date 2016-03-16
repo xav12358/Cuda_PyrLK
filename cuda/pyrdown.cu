@@ -45,23 +45,9 @@ __global__ void PyrDown_x_g(u_int8_t *ptGrayIn,u_int8_t *ptGrayOut,  int w, int 
         float pp2   = (float)LocalBlock[ix+2+(iy)*(BLOCK_SIZE_X+4)]/16.0f;
         int output  = p_2 + p_1 + p0 + pp1 + pp2;
 
-        ptGrayOut[ixo+iyo*w] = min(output,255);//LocalBlock[ix+iy*(BLOCK_SIZE_X+4)];//min(output,255);
+        ptGrayOut[ixo+iyo*w] = min(output,255);
     }
 
-
-    //    int ix = blockIdx.x*blockDim.x + threadIdx.x;
-    //    int iy = blockIdx.y*blockDim.y + threadIdx.y;
-
-    //    if(ix<w && iy<h)// && x>2)
-    //    {
-    //        float p_2   = ptGrayIn[ix-1+(iy)*w]/16.0f;
-    //        float p_1   = ptGrayIn[ix-2+(iy)*w]/4.0f;
-    //        float p0    = 3.0f*ptGrayIn[ix+iy*w]/8.0f;
-    //        float pp1   = ptGrayIn[ix+1+(iy)*w]/4.0f;
-    //        float pp2   = ptGrayIn[ix+2+(iy)*w]/16.0f;
-    //        int output  = p_2 + p_1 + p0 + pp1 + pp2;
-    //        ptGrayOut[ix+iy*w] = min(output,255);
-    //    }
 }
 
 /////////////////////////////////
@@ -73,32 +59,7 @@ __global__ void PyrDown_x_g(u_int8_t *ptGrayIn,u_int8_t *ptGrayOut,  int w, int 
 ///
 __global__ void PyrDown_y_g(u_int8_t *ptGrayIn,u_int8_t *ptGrayOut,  int  w, int h)
 {
-    //    __shared__ unsigned char LocalBlock[(BLOCK_SIZE_X)*(BLOCK_SIZE_Y+4)];
-    //int x = blockIdx.x*blockDim.x + threadIdx.x;
-    //int y = blockIdx.y*blockDim.y + threadIdx.y;
-    //    for(int i = 0; i < BLOCK_SIZE_X && (x + i)*2 < w; i=i+threadDim.x)
-    //    {
-    //        for(int j=0;j<BLOCK_SIZE_Y+4 && (y+j)*2<h;j=j+threadDim.y)
-    //        {
-    //            LocalBlock[i+j*(BLOCK_SIZE_Y+4)] = ptGrayIn[(x+i) + 2*(y+j)*w];
-    //        }
-    //    }
-    //    syncthreads();
 
-    //    int ix = threadIdx.x;
-    //    int iy = threadIdx.y;
-
-    //    if(ix<w && iy<h-2 && y>2)
-    //    {
-    //        float p_2   = LocalBlock[ix+(iy-2)*w]/16.0f;
-    //        float p_1   = LocalBlock[ix+(iy-1)*w]/4.0f;
-    //        float p0    = 3.0f*LocalBlock[ix+iy*w]/8.0f;
-    //        float pp1   = LocalBlock[ix+(iy+1)*w]/4.0f;
-    //        float pp2   = LocalBlock[ix+(iy+2)*w]/16.0f;
-
-    //        int output  = p_2 + p_1 + p0 + pp1 + pp2;
-    //        ptGrayOut[ix+(iy)*w] = min(output,255);
-    //    }
 
     int ix = blockIdx.x*blockDim.x + threadIdx.x;
     int iy = blockIdx.y*blockDim.y + threadIdx.y;
@@ -115,49 +76,6 @@ __global__ void PyrDown_y_g(u_int8_t *ptGrayIn,u_int8_t *ptGrayOut,  int  w, int
         ptGrayOut[ix+iy*w] = min(output,255);
     }
 }
-
-
-//__global__ void PyrDown(u_int8_t *ptGrayIn,u_int8_t *ptGrayOut,  u_int8_t w, u_int8_t h)
-//{
-//    __shared__ unsigned char LocalBlock[(BLOCK_SIZE_X*2+4)*(BLOCK_SIZE_Y*2+4)];
-
-//    int x = blockIdx.x*blockDim.x + threadIdx.x;
-//    int y = blockIdx.y*blockDim.y + threadIdx.y;
-//    for(int i=0;i<BLOCK_SIZE_X+4 && (x+i)<w;i=i+threadDim.x)
-//    {
-//        for(int j=0;j<BLOCK_SIZE_Y+4 && (y+j)<h;j=j+threadDim.y)
-//        {
-//            LocalBlock[i+j*BLOCK_SIZE_Y] = ptGrayIn[x+i + (y+j)*w];
-//        }
-//    }
-
-//    syncthreads();
-//    //    int ix = blockIdx.x*blockDim.x + threadIdx.x;
-//    //    int iy = blockIdx.y*blockDim.y + threadIdx.y+2;
-
-//    int ix = threadIdx.x+2;
-//    int iy = threadIdx.y;
-
-
-//    if(ix<w && iy<h)
-//    {
-//        //        float p_2   = ptGrayIn[ix+(iy-2)*w]/16.0f;
-//        //        float p_1   = ptGrayIn[ix+(iy-1)*w]/4.0f;
-//        //        float p0    = 3.0f*ptGrayIn[ix+iy*w]/8.0f;
-//        //        float pp1   = ptGrayIn[ix+(iy+1)*w]/4.0f;
-//        //        float pp2   = ptGrayIn[ix+(iy+2)*w]/16.0f;
-//        //        int output  = p_2 + p_1 + p0 + pp1 + pp2;
-
-//        float p_2   = LocalBlock[ix-2+(iy)*w]/16.0f;
-//        float p_1   = LocalBlock[ix-1+(iy)*w]/4.0f;
-//        float p0    = 3.0f*LocalBlock[ix+iy*w]/8.0f;
-//        float pp1   = LocalBlock[ix+1+(iy)*w]/4.0f;
-//        float pp2   = LocalBlock[ix+2+(iy)*w]/16.0f;
-//        int output  = p_2 + p_1 + p0 + pp1 + pp2;
-
-//        ptGrayOut[ix+iy*w] = min(output,255);
-//    }
-//}
 
 
 
@@ -207,7 +125,10 @@ void PyrDown_gpu::run(int rows,int cols,u_int8_t *ptSrc)
     dim3 threads_y(BLOCK_SIZE_X, BLOCK_SIZE_Y);
     PyrDown_y_g<<<blocks_y,threads_y>>>(ptImageTmp,ptImageL1,  cols/2, rows/2);
 
-
+//    cv::Mat Image1(rows/2,cols/2,CV_8U);
+//    checkCudaErrors(cudaMemcpy(Image1.data , ptImageL1, rows * cols * sizeof(u_int8_t)/4, cudaMemcpyDeviceToHost));
+//    cv::imshow("Image L1",Image1);
+//    cv::waitKey(-1);
 
 
     dim3 blocks_x_L1(ceil(cols / ( BLOCK_SIZE_X/2.0)), ceil(rows / BLOCK_SIZE_Y/2.0));
@@ -219,6 +140,10 @@ void PyrDown_gpu::run(int rows,int cols,u_int8_t *ptSrc)
     PyrDown_y_g<<<blocks_y_L1,threads_y_L1>>>(ptImageTmp,ptImageL2,  cols/4, rows/4);
 
 
+//    cv::Mat Image2(rows/4,cols/4,CV_8U);
+//    checkCudaErrors(cudaMemcpy(Image2.data , ptImageL2, rows * cols * sizeof(u_int8_t)/16, cudaMemcpyDeviceToHost));
+//    cv::imshow("Image L2",Image2);
+//    cv::waitKey(-1);
 
 
     dim3 blocks_x_L2(ceil(cols /  BLOCK_SIZE_X /4.0), ceil(rows / BLOCK_SIZE_Y/4.0));
@@ -229,42 +154,33 @@ void PyrDown_gpu::run(int rows,int cols,u_int8_t *ptSrc)
     dim3 threads_y_L2(BLOCK_SIZE_X, BLOCK_SIZE_Y);
     PyrDown_y_g<<<blocks_y_L2,threads_y_L2>>>(ptImageTmp,ptImageL3,  cols/8, rows/8);
 
+//    cv::Mat Image3(rows/8,cols/8,CV_8U);
+//    checkCudaErrors(cudaMemcpy(Image3.data , ptImageL3, rows * cols * sizeof(u_int8_t)/64, cudaMemcpyDeviceToHost));
+//    cv::imshow("Image L3",Image3);
+//    cv::waitKey(-1);
+
 }
 
-/////////////////////////////////////
-/// \brief PyrDown::run
-/// \param rows
-/// \param cols
-/// \param ptSrc
-/// \param ilevel
-///
-void PyrDown_gpu::run(int rows,int cols,u_int8_t *ptSrc,int ilevel)
+
+void PyrDown_gpu::run(int rows, int cols, u_int8_t *ptIn, u_int8_t *ptOut, u_int8_t *ptTmp)
 {
 
-    //    //    switch(ilevel)
-    //    //    {
-    //    //    case 1:
-    //    dim3 blocks_x(cols / ( BLOCK_SIZE_X), rows / BLOCK_SIZE_Y);
-    //    dim3 threads_x(BLOCK_SIZE_X, BLOCK_SIZE_Y);
 
-    //    PyrDown_x_g<<<blocks_x,threads_x>>>(ptImageL1,ptImageTmp,  cols, rows);
+    dim3 blocks_x(ceil((float)cols / ( BLOCK_SIZE_X)), ceil((float)rows / BLOCK_SIZE_Y));
+    dim3 threads_x(BLOCK_SIZE_X, BLOCK_SIZE_Y);
+    PyrDown_x_g<<<blocks_x,threads_x>>>(ptIn,ptTmp, cols,rows);
 
-    //    dim3 blocks_y(cols/2 / ( BLOCK_SIZE_X), rows/2 / BLOCK_SIZE_Y);
-    //    dim3 threads_y(BLOCK_SIZE_X, BLOCK_SIZE_Y);
-    //    PyrDown_y_g<<<blocks_y,threads_y>>>(ptImageTmp,ptImageL2,  cols/2, rows/2);
-    //    //        break;
-    //    /*
-    //    case 2:
-    //        dim3 blocks_x(cols / ( BLOCK_SIZE_X), rows / BLOCK_SIZE_Y);
-    //        dim3 threads_x(BLOCK_SIZE_X, BLOCK_SIZE_Y);
+    dim3 blocks_y(ceil((float)cols / ( BLOCK_SIZE_X)/2.0),ceil( (float)rows / BLOCK_SIZE_Y/2.0));
+    dim3 threads_y(BLOCK_SIZE_X, BLOCK_SIZE_Y);
+    PyrDown_y_g<<<blocks_y,threads_y>>>(ptTmp,ptOut,  cols/2, rows/2);
 
-    //        PyrDown_x_g<<<blocks_x,threads_x>>>(ptImageL2,ptImageTmp,  cols, rows);
 
-    //        dim3 blocks_y(cols/2 / ( BLOCK_SIZE_X), rows/2 / BLOCK_SIZE_Y);
-    //        dim3 threads_y(BLOCK_SIZE_X, BLOCK_SIZE_Y);
-    //        PyrDown_y_g<<<blocks_y,threads_y>>>(ptImageTmp,ptImageL3,  cols/2, rows/2);
-    //        break*/;
-    //    //    }
 
+    cv::Mat Image2(rows/2,cols/2,CV_8U);
+    checkCudaErrors( cudaMemcpy(Image2.data, ptOut ,rows*cols/4*sizeof(u_int8_t),  cudaMemcpyDeviceToHost) );
+
+//    //cv::Mat Image2(ptKeyFrame->Levels[i].irow,ptKeyFrame->Levels[i].icol,CV_8U,ptData);
+//    imshow("Resultat Level IN",Image2);
+//    cv::waitKey(-1);
 
 }

@@ -26,7 +26,7 @@ public:
     PyrDown_gpu(int rows, int cols);
     ~PyrDown_gpu();
     void run(int rows,int cols,u_int8_t *ptSrc);
-    void run(int rows,int cols,u_int8_t *ptSrc,int ilevel);
+    static void run(int rows,int cols,u_int8_t *ptIn,u_int8_t *ptOut,u_int8_t * ptTmp);
 };
 
 #endif // PYRDOWN_H
