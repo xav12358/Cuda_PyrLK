@@ -6,8 +6,6 @@
 #include <stdio.h>
 
 
-
-
 #include "global_var.h"
 
 

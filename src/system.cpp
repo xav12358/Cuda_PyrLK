@@ -1,7 +1,7 @@
 #include <include/system.h>
-#include "/home/lineo/opencv-2.4.9/include/opencv/cv.h"
-#include "/home/lineo/opencv-2.4.9/include/opencv/highgui.h"
-#include "/home/lineo/opencv-2.4.9/include/opencv2/opencv.hpp"
+//#include "/home/lineo/opencv-2.4.9/include/opencv/cv.h"
+//#include "/home/lineo/opencv-2.4.9/include/opencv/highgui.h"
+//#include "/home/lineo/opencv-2.4.9/include/opencv2/opencv.hpp"
 
 #include <QDebug>
 
@@ -60,20 +60,64 @@ System::System()
 ///
 void System::run(void)
 {
+
+    /////////////////////////////////////////////////////
+    ////////////// Test of the pyrlk algorithm/////////
+    Mat imageGrayL1 = cv::imread("/home/xavier/Bureau/Developpement/Cuda_PyrLK-master/data/minicooper/frame11.pgm",0);
+    Mat imageGrayL2 = cv::imread("/home/xavier/Bureau/Developpement/Cuda_PyrLK-master/data/minicooper/frame10.pgm",0);
+
+    int iNbPt = 5;
+    float2 *PrevPt,*NextPt;
+
+    PrevPt  = (float2*)malloc(iNbPt*sizeof(float2));
+    NextPt  = (float2*)malloc(iNbPt*sizeof(float2));
+
+    std::cout << "Create point" << std::endl;
+    PrevPt[0].x = (277);
+    PrevPt[0].y = (333);
+    PrevPt[1].x = (269);
+    PrevPt[1].y = (194);
+    PrevPt[2].x = (288);
+    PrevPt[2].y = (375);
+    PrevPt[3].x = (444);
+    PrevPt[3].y = (131);
+    PrevPt[4].x = (292);
+    PrevPt[4].y = (298);
+
+    int lvls = 3;
+    std::cout << "Create point" << std::endl;
+    NextPt[0].x = (277.0)/(1<<(lvls));
+    NextPt[0].y = (333.0)/(1<<(lvls));
+    NextPt[1].x = (269.0)/(1<<(lvls));
+    NextPt[1].y = (194.0)/(1<<(lvls));
+    NextPt[2].x = (288.0)/(1<<(lvls));
+    NextPt[2].y = (375.0)/(1<<(lvls));
+    NextPt[3].x = (444.0)/(1<<(lvls));
+    NextPt[3].y = (131.0)/(1<<(lvls));
+    NextPt[4].x = (292.0)/(1<<(lvls));
+    NextPt[4].y = (298.0)/(1<<(lvls));
+
+    std::cout << "Create point end" << std::endl;
+
+    PyrLK_gpu *ptPyrLK = new PyrLK_gpu(480,640);
+    ptPyrLK->run_sparse(imageGrayL2.data,imageGrayL1.data,480,640,PrevPt,iNbPt);
+
+
+
     ///////////////////////////////////////////////////////
     //////////////// Test of the pyrdown algorithm/////////
     ///
-    Mat imageGrayL1 = cv::imread("/home/lineo/Bureau/Developpement/Cuda/Projet1/data/minicooper/frame11.pgm",0);
-    PyrDown_gpu *ptPyrDown = new PyrDown_gpu(imageGrayL1.rows,imageGrayL1.cols);
-    ptPyrDown->run(imageGrayL1.rows,imageGrayL1.cols,imageGrayL1.data);
+    //    Mat imageGrayL1 = cv::imread("/home/xavier/Bureau/Developpement/Cuda_PyrLK-master/data/minicooper/frame11.pgm",0);
+    //    PyrDown_gpu *ptPyrDown = new PyrDown_gpu(imageGrayL1.rows,imageGrayL1.cols);
+    //    ptPyrDown->run(imageGrayL1.rows,imageGrayL1.cols,imageGrayL1.data);
+
     
     
-    
-    ///////////////////////////////////////////////////////
-    //////////////// Test of the fast algorithm////////////
-    ///
-    //    Mat imageGrayL1 = cv::imread("/home/lineo/Bureau/Developpement/Cuda/Projet1/data/minicooper/frame11.pgm",0);
-    //    Mat imageGrayL2 = cv::imread("/home/lineo/Bureau/Developpement/Cuda/Projet1/data/minicooper/frame10.pgm",0);
+    /////////////////////////////////////////////////////
+    ////////////// Test of the fast algorithm////////////
+
+    //    Mat imageGrayL1 = cv::imread("/home/xavier/Bureau/Developpement/Cuda_PyrLK-master/data/minicooper/frame11.pgm",0);
+    //    Mat imageGrayL2 = cv::imread("/home/xavier/Bureau/Developpement/Cuda_PyrLK-master/data/minicooper/frame10.pgm",0);
     
     
     //    int MaxKeypoints = 25000;
@@ -107,40 +151,40 @@ void System::run(void)
     ///////////////////////////////////////////////////////
     //////////////// Test of the pyrdown       ////////////
     ///
-    //Mat imageGrayL1 = cv::imread("/home/lineo/Bureau/Developpement/Cuda/Projet1/data/minicooper/frame11.pgm",0);
-    /*KeyFrame *ptKeyFrame = new KeyFrame(imageGrayL1.rows,imageGrayL1.cols,ToCalculate);
-    qDebug() << "i : " << imageGrayL1.cols << " " << imageGrayL1.rows;
-    for(int i=0;i<4;i++)
-    {
-        qDebug() << "i : " << ptKeyFrame->Levels[i].icol << " " << ptKeyFrame->Levels[i].irow;
-    }
+    //    cv::Mat imageGrayL1 = cv::imread("/home/xavier/Bureau/Developpement/Cuda_PyrLK-master/data/minicooper/frame11.pgm",0);
+    //    KeyFrame *ptKeyFrame = new KeyFrame(imageGrayL1.rows,imageGrayL1.cols,ToCalculate);
+    //    qDebug() << "i : " << imageGrayL1.cols << " " << imageGrayL1.rows;
+    //    for(int i=0;i<4;i++)
+    //    {
+    //        qDebug() << "i : " << ptKeyFrame->Levels[i].icol << " " << ptKeyFrame->Levels[i].irow;
+    //    }
+    //    qDebug() << "MakePyramid ";
     
-    qDebug() << "MakePyramid ";
-    ptKeyFrame->MakePyramid(imageGrayL1.data);
-    qDebug() << "MakePyramid_end ";
+    //    ptKeyFrame->MakePyramid(imageGrayL1.data);
+    //    qDebug() << "MakePyramid_end ";
     
     
-    for(int i=0;i<4;i++)
-    {
-        cv::Mat *ImageL = new cv::Mat(ptKeyFrame->Levels[i].irow,ptKeyFrame->Levels[i].icol,CV_8U,ptKeyFrame->Levels[i].u8_ptData);
-        cv::Mat *ImageLMax = new cv::Mat(ptKeyFrame->Levels[i].irow,ptKeyFrame->Levels[i].icol,CV_8U);
-        
-        ImageL->copyTo(*ImageLMax);
-        qDebug() << "NbKeyframe " << ptKeyFrame->Levels[i].iNbKeypoints;
-        //        for(int j=0;j<ptKeyFrame->Levels[i].iNbKeypoints && j<1000;j++)
-        //        {
-        //            cv::circle(*ImageL,cv::Point( ptKeyFrame->Levels[i].kpLoc[j].x, ptKeyFrame->Levels[i].kpLoc[j].y ),3,cv::Scalar(0,0,255),2);
-        //        }
-        
-        qDebug() << "NbKeyframeMax  " << ptKeyFrame->Levels[i].iNbKeypointsMax;
-        for(int j=0;j<ptKeyFrame->Levels[i].iNbKeypointsMax && j<10000;j++)
-        {
-            cv::circle(*ImageLMax,cv::Point( ptKeyFrame->Levels[i].kpLocMax[j].x, ptKeyFrame->Levels[i].kpLocMax[j].y ),2,cv::Scalar(0,0,255),2);
-        }
-        imshow("Level",*ImageL);
-        imshow("LevelMax",*ImageLMax);
-        cv::waitKey(-1);
-    }*/
+    //    for(int i=0;i<4;i++)
+    //    {
+    //        cv::Mat *ImageL = new cv::Mat(ptKeyFrame->Levels[i].irow,ptKeyFrame->Levels[i].icol,CV_8U,ptKeyFrame->Levels[i].u8_ptData);
+    //        cv::Mat *ImageLMax = new cv::Mat(ptKeyFrame->Levels[i].irow,ptKeyFrame->Levels[i].icol,CV_8U);
+
+    //        ImageL->copyTo(*ImageLMax);
+    //        qDebug() << "NbKeyframe " << ptKeyFrame->Levels[i].iNbKeypoints;
+    //        //        for(int j=0;j<ptKeyFrame->Levels[i].iNbKeypoints && j<1000;j++)
+    //        //        {
+    //        //            cv::circle(*ImageL,cv::Point( ptKeyFrame->Levels[i].kpLoc[j].x, ptKeyFrame->Levels[i].kpLoc[j].y ),3,cv::Scalar(0,0,255),2);
+    //        //        }
+
+    //        qDebug() << "NbKeyframeMax  " << ptKeyFrame->Levels[i].iNbKeypointsMax;
+    //        for(int j=0;j<ptKeyFrame->Levels[i].iNbKeypointsMax && j<10000;j++)
+    //        {
+    //            cv::circle(*ImageLMax,cv::Point( ptKeyFrame->Levels[i].kpLocMax[j].x, ptKeyFrame->Levels[i].kpLocMax[j].y ),2,cv::Scalar(0,0,255),2);
+    //        }
+    //        imshow("Level",*ImageL);
+    //        imshow("LevelMax",*ImageLMax);
+    //        cv::waitKey(-1);
+    //    }
     
 
 
@@ -163,64 +207,96 @@ void System::run(void)
 
 
 
-    int halfpatch_size  = 5;
-    int patch_size = 2*halfpatch_size+1;
+    //    int halfpatch_size  = 5;
+    //    int patch_size = 2*halfpatch_size+1;
 
-    float minx = 0,maxx = 0,miny = 0,maxy = 0;
-    for (int y=0; y<patch_size; ++y)
-    {
-        for (int x=0; x<patch_size; ++x )
-        {
-            float indexx = x-halfpatch_size;
-            float  indexy = y-halfpatch_size;
+    //    float minx = 0,maxx = 0,miny = 0,maxy = 0;
+    //    for (int y=0; y<patch_size; ++y)
+    //    {
+    //        for (int x=0; x<patch_size; ++x )
+    //        {
+    //            float indexx = x-halfpatch_size;
+    //            float  indexy = y-halfpatch_size;
 
-            float valx = indexx * cos(M_PI/4) +indexy * sin(M_PI/4);
-            float valy = -indexx * sin(M_PI/4) +indexy * cos(M_PI/4) ;
+    //            float valx = indexx * cos(M_PI/4) +indexy * sin(M_PI/4);
+    //            float valy = -indexx * sin(M_PI/4) +indexy * cos(M_PI/4) ;
 
-            if(valx<minx)
-            {
-                minx = valx;
-            }
+    //            if(valx<minx)
+    //            {
+    //                minx = valx;
+    //            }
 
-            if(valy<miny)
-            {
-                miny = valy;
-            }
+    //            if(valy<miny)
+    //            {
+    //                miny = valy;
+    //            }
 
-            if(valx>maxx)
-            {
-                maxx = valx;
-            }
+    //            if(valx>maxx)
+    //            {
+    //                maxx = valx;
+    //            }
 
-            if(valy>maxy)
-            {
-                maxy = valy;
-            }
-            std::cout << "valx " << valx <<" valy" << valy << std::endl;
-            //std::cout << "(" << indexx << " , " << indexy << ")";
-        }
+    //            if(valy>maxy)
+    //            {
+    //                maxy = valy;
+    //            }
+    //            std::cout << "valx " << valx <<" valy" << valy << std::endl;
+    //            //std::cout << "(" << indexx << " , " << indexy << ")";
+    //        }
 
-        //std::cout << std::endl;
-    }
-    printf("min x :%f y:%f, max x:%f y :%f",minx,miny,maxx,maxy);
+    //        //std::cout << std::endl;
+    //    }
+    //    printf("min x :%f y:%f, max x:%f y :%f",minx,miny,maxx,maxy);
+
+    ///////////////////////////////////////////////////////
+    //////////////// Test of patching/////////
+    ///
+
+//    Mat imageGrayL1 = cv::imread("/home/xavier/Bureau/Developpement/Cuda_PyrLK-master/data/minicooper/frame11.pgm",0);
+
+//    PatchTracker * ptTracker = new PatchTracker();
+//    qDebug() << "ptTracker  0";
+//    for(int i=0;i<120;i++)
+//    {
+//        qDebug() << "ptTracker  in " <<ptTracker->i_IndiceFeaturesToWarp ;
+//        ptTracker->addPatchToWarp(imageGrayL1.data,imageGrayL1.rows,imageGrayL1.cols,250,25+i);
+//    }
 
 
-  /*  PatchTracker * ptTracker = new PatchTracker();
-    qDebug() << "ptTracker  0";
-    for(int i=0;i<120;i++)
-    {
-        qDebug() << "ptTracker  in " <<ptTracker->indiceFeatures ;
-        ptTracker->addPatchToWarp(imageGrayL1.data,imageGrayL1.rows,imageGrayL1.cols,250,25+i);
-    }
+//    qDebug() << "ptTracker  2 " <<ptTracker->i_IndiceFeaturesToWarp ;
+//    Mat ImagePatchMax(PATCH_SIZE_MAX*120,PATCH_SIZE_MAX,CV_8U,ptTracker->u8_ListPatchsMaxHost);
+//    Mat ImagePatchWithBorder(PATCH_SIZE_WITH_BORDER*120,PATCH_SIZE_WITH_BORDER,CV_8U,ptTracker->u8_ListPatchsWithBorderHost);
+
+//    qDebug() << "ptTracker  2.1";
 
 
-    qDebug() << "ptTracker  2 " <<ptTracker->indiceFeatures ;
-    Mat ImagePatch(PATCH_SIZE_MAX*120,PATCH_SIZE_MAX,CV_8U,ptTracker->ptlistPatchsMaxHost);
-    qDebug() << "ptTracker  2.1";
-    imshow("ImagePatch",ImagePatch);
+//    ptTracker->runWarp();
+//    qDebug() << "ptTracker  2.2";
 
-    cv::waitKey(-1);*/
+//    printf("X:\n");
+//    for(int y=0;y<11;y++)
+//    {
+//        for(int x=0;x<11;x++)
+//        {
+//            printf(" %f ",ptTracker->ftmpHost[x+y*11].x);
 
+//        }
+//        printf("\n");
+//    }
+
+//    printf("Y: \n");
+//    for(int y=0;y<11;y++)
+//    {
+//        for(int x=0;x<11;x++)
+//        {
+//            printf(" %f ",ptTracker->ftmpHost[x+y*11].y);
+//        }
+//        printf("\n");
+//    }
+//    imshow("ImagePatch",ImagePatchMax);
+//    imshow("ImagePatchWithBorder",ImagePatchWithBorder);
+
+//    cv::waitKey(-1);
 }
 
 

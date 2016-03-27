@@ -21,5 +21,10 @@ inline void __checkCudaErrors(cudaError err, const char *file, const int line)
     }
 }
 
+
+
+#define MAX_FEATURES_TO_SEARCH 120
+
+
 #endif // GLOBAL_HH
 

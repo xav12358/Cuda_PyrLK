@@ -4,7 +4,7 @@
 #include <cv.h>
 #include <opencv2/highgui/highgui.hpp>
 
-#define HALF_WIN        10
+#define HALF_WIN        5
 #define THRESHOLD       0.01
 
 
@@ -250,10 +250,27 @@ __global__ void lkflow(
 //////////////////////////////////////
 /// \brief PyrLK_gpu::PyrLK_gpu
 ///
-PyrLK_gpu::PyrLK_gpu()
+PyrLK_gpu::PyrLK_gpu(int rows, int cols, int iNbMaxFeatures):
+    iNbMaxFeaturesLK(iNbMaxFeatures)
 {
 
+    ////////////////////////////////////////
+    // Create pyrdown for each image
+    std::cout << "Compute PyrDown L1" << std::endl;
+    ptPyrDownI = new PyrDown_gpu(rows,cols);
 
+    std::cout << "Compute PyrDown L2" << std::endl;
+    ptPyrDownJ = new PyrDown_gpu(rows,cols);
+
+    ///////////////////////////////////
+    // Create variable in device memory
+    checkCudaErrors(cudaMalloc((void **)&f2_PointsPrevDevice,  iNbMaxFeatures * sizeof(float2)));
+    checkCudaErrors(cudaMalloc((void **)&f2_PointsNextDevice,  iNbMaxFeatures * sizeof(float2)));
+    checkCudaErrors(cudaMalloc((void **)&u8_StatusDevice,  iNbMaxFeatures * sizeof(u_int8_t)));
+
+//    f2_PointsPrevHost  = (float2*)malloc(iNbMaxFeatures*sizeof(float2));
+    f2_PointsNextHost  = (float2*)malloc(iNbMaxFeatures*sizeof(float2));
+    u8_StatusHost      = (u_int8_t*)malloc(iNbMaxFeatures*sizeof(u_int8_t));
 }
 
 
@@ -271,75 +288,41 @@ PyrLK_gpu::~PyrLK_gpu()
 //////////////////////////////////////
 /// \brief PyrLK_gpu::run_sparse
 ///
-void PyrLK_gpu::run_sparse(u_int8_t  *Idata,u_int8_t*Jdata,int h,int w)
+void PyrLK_gpu::run_sparse(u_int8_t  *Idata,u_int8_t*Jdata,int h,int w,float2 *f2_Points,int iNbPoints)
 {
 
-    ////////////////////////////////////////
-    // Create pyrdown for each image
-
-    std::cout << "Compute PyrDown L1" << std::endl;
-    PyrDown_gpu *ptPyrDownI = new PyrDown_gpu(h,w);
+    //////////////////////////////////////
+    // Compute PyrDown for the two images
     ptPyrDownI->run(h,w,Idata);
-
-    std::cout << "Compute PyrDown L2" << std::endl;
-    PyrDown_gpu *ptPyrDownJ = new PyrDown_gpu(h,w);
     ptPyrDownJ->run(h,w,Jdata);
 
+    ///////////////////////////////////
+    // Create initial next points equal to the previous points
+    int lvls = 3;
+    for(int i=0;i<iNbPoints;i++)
+    {
+        f2_PointsNextHost[i].x = (f2_Points[i].x)/(1<<(lvls));
+        f2_PointsNextHost[i].y = (f2_Points[i].y)/(1<<(lvls));
+    }
 
-    int iNbPt = 5;
 
-    float2 *PrevPt,*NextPt,*ftmp;
-    float2 *PrevPt_CU,*NextPt_CU,*ftmp_CU;
-    u_int8_t *uStatus_CU;
+    checkCudaErrors( cudaMemcpy(f2_PointsPrevDevice, f2_Points, iNbPoints*sizeof(float2), cudaMemcpyHostToDevice) );
+    checkCudaErrors( cudaMemcpy(f2_PointsNextDevice, f2_PointsNextHost, iNbPoints*sizeof(float2), cudaMemcpyHostToDevice) );
 
+
+
+    ////////////////////////////////////////////
+    float2 *ftmp,*ftmp_CU;
     int valstep  = (10*2+3);
-    std::cout << "Create buffer" << std::endl;
-    checkCudaErrors(cudaMalloc((void **)&PrevPt_CU,  5 * sizeof(float2)));
-    checkCudaErrors(cudaMalloc((void **)&NextPt_CU,  5 * sizeof(float2)));
-    checkCudaErrors(cudaMalloc((void **)&uStatus_CU,  5 * sizeof(u_int8_t)));
     checkCudaErrors(cudaMalloc((void **)&ftmp_CU,  valstep*valstep * sizeof(float2)));
-
-    PrevPt  = (float2*)malloc(iNbPt*sizeof(float2));
-    NextPt  = (float2*)malloc(iNbPt*sizeof(float2));
     ftmp    = (float2*)malloc( valstep*valstep*sizeof(float2));
 
-    std::cout << "Create point" << std::endl;
-    PrevPt[0].x = (277);
-    PrevPt[0].y = (333);
-    PrevPt[1].x = (269);
-    PrevPt[1].y = (194);
-    PrevPt[2].x = (288);
-    PrevPt[2].y = (375);
-    PrevPt[3].x = (444);
-    PrevPt[3].y = (131);
-    PrevPt[4].x = (292);
-    PrevPt[4].y = (298);
-
-    int lvls = 3;
-    std::cout << "Create point" << std::endl;
-    NextPt[0].x = (277.0)/(1<<(lvls));
-    NextPt[0].y = (333.0)/(1<<(lvls));
-    NextPt[1].x = (269.0)/(1<<(lvls));
-    NextPt[1].y = (194.0)/(1<<(lvls));
-    NextPt[2].x = (288.0)/(1<<(lvls));
-    NextPt[2].y = (375.0)/(1<<(lvls));
-    NextPt[3].x = (444.0)/(1<<(lvls));
-    NextPt[3].y = (131.0)/(1<<(lvls));
-    NextPt[4].x = (292.0)/(1<<(lvls));
-    NextPt[4].y = (298.0)/(1<<(lvls));
-
-    // Copy vectors from host memory to device memory
-    checkCudaErrors( cudaMemcpy(PrevPt_CU, PrevPt, iNbPt*sizeof(float2), cudaMemcpyHostToDevice) );
-    checkCudaErrors( cudaMemcpy(NextPt_CU, NextPt, iNbPt*sizeof(float2), cudaMemcpyHostToDevice) );
-
-
-    std::cout << "Create point end" << std::endl;
-    ///////////////////////////////////////////
+   ///////////////////////////////////////////
     // Compute Optical flow for each point at each level
     cudaChannelFormatDesc desc = cudaCreateChannelDesc<unsigned char>();
 
     dim3 threads(BLOCK_SIZE_X, BLOCK_SIZE_Y);
-    dim3 blocks(iNbPt, 1);
+    dim3 blocks(iNbPoints, 1);
     for( int i=lvls-1; i>=0 ; i-- )
     {
 
@@ -373,14 +356,15 @@ void PyrLK_gpu::run_sparse(u_int8_t  *Idata,u_int8_t*Jdata,int h,int w)
 
         }
 
-        lkflow<<<blocks,threads>>>(PrevPt_CU,NextPt_CU,uStatus_CU,ftmp_CU,h/dlevel,w/dlevel,15,i);
+//        lkflow<<<blocks,threads>>>(PrevPt_CU,NextPt_CU,uStatus_CU,ftmp_CU,h/dlevel,w/dlevel,10,i);
+        lkflow<<<blocks,threads>>>(f2_PointsPrevDevice,f2_PointsNextDevice,u8_StatusDevice,ftmp_CU,h/dlevel,w/dlevel,10,i);
 
         checkCudaErrors(cudaUnbindTexture(Image_I));
         checkCudaErrors(cudaUnbindTexture(Image_J));
     }
 
 
-    checkCudaErrors( cudaMemcpy(NextPt, NextPt_CU, iNbPt*sizeof(float2), cudaMemcpyDeviceToHost) );
+    checkCudaErrors( cudaMemcpy(f2_PointsNextHost, f2_PointsNextDevice, iNbPoints*sizeof(float2), cudaMemcpyDeviceToHost) );
 
 
     cv::Mat *ImageConcat = new cv::Mat(h, w*2, CV_8U);
@@ -395,10 +379,10 @@ void PyrLK_gpu::run_sparse(u_int8_t  *Idata,u_int8_t*Jdata,int h,int w)
 
     ImageConcat->copyTo(im3concat);
 
-    for(int j=0;j<iNbPt;j++)
+    for(int j=0;j<iNbPoints;j++)
     {
-        cv::line( *ImageConcat, cv::Point( PrevPt[j].x, PrevPt[j].y ), cv::Point( NextPt[j].x+640, NextPt[j].y ) ,cv::Scalar(0,0,0));
-        std::cout << "prev :  "<< PrevPt[j].x << " " << PrevPt[j].y << " Next " << NextPt[j].x << " " << NextPt[j].y << std::endl;
+        cv::line( *ImageConcat, cv::Point( f2_Points[j].x, f2_Points[j].y ), cv::Point( f2_PointsNextHost[j].x+640, f2_PointsNextHost[j].y ) ,cv::Scalar(0,0,0));
+        std::cout << "prev :  "<< f2_Points[j].x << " " << f2_Points[j].y << " Next " << f2_PointsNextHost[j].x << " " << f2_PointsNextHost[j].y << std::endl;
     }
 
 
