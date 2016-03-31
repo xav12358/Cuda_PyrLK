@@ -61,14 +61,16 @@ System::System()
 void System::run(void)
 {
 
+
     /////////////////////////////////////////////////////
     ////////////// Test of the pyrlk algorithm/////////
-    Mat imageGrayL1 = cv::imread("/home/xavier/Bureau/Developpement/Cuda_PyrLK-master/data/minicooper/frame11.pgm",0);
-    Mat imageGrayL2 = cv::imread("/home/xavier/Bureau/Developpement/Cuda_PyrLK-master/data/minicooper/frame10.pgm",0);
+    Mat imageGrayL1 = cv::imread("/home/lineo/Bureau/Developpement/Cuda/Projet1/data/minicooper/frame10.pgm",0);
+    Mat imageGrayL2 = cv::imread("/home/lineo/Bureau/Developpement/Cuda/Projet1/data/minicooper/frame11.pgm",0);
 
-    int iNbPt = 5;
+    PatchTracker *ptPatchTracker = new PatchTracker();
+
+    int iNbPt = 8;
     float2 *PrevPt,*NextPt;
-
     PrevPt  = (float2*)malloc(iNbPt*sizeof(float2));
     NextPt  = (float2*)malloc(iNbPt*sizeof(float2));
 
@@ -83,31 +85,132 @@ void System::run(void)
     PrevPt[3].y = (131);
     PrevPt[4].x = (292);
     PrevPt[4].y = (298);
-
-    int lvls = 3;
-    std::cout << "Create point" << std::endl;
-    NextPt[0].x = (277.0)/(1<<(lvls));
-    NextPt[0].y = (333.0)/(1<<(lvls));
-    NextPt[1].x = (269.0)/(1<<(lvls));
-    NextPt[1].y = (194.0)/(1<<(lvls));
-    NextPt[2].x = (288.0)/(1<<(lvls));
-    NextPt[2].y = (375.0)/(1<<(lvls));
-    NextPt[3].x = (444.0)/(1<<(lvls));
-    NextPt[3].y = (131.0)/(1<<(lvls));
-    NextPt[4].x = (292.0)/(1<<(lvls));
-    NextPt[4].y = (298.0)/(1<<(lvls));
-
+    PrevPt[5].x = (305);
+    PrevPt[5].y = (325);
+    PrevPt[6].x = (368);
+    PrevPt[6].y = (281);
+    PrevPt[7].x = (191);
+    PrevPt[7].y = (197);
     std::cout << "Create point end" << std::endl;
 
+    ///////////////////////////////////////
+    /// Warp all the patch
+    for(int i=0;i<8;i++)
+    {
+        ptPatchTracker->addPatchToWarp(imageGrayL1.data,imageGrayL1.rows,imageGrayL1.cols,PrevPt[i].x,PrevPt[i].y);
+    }
+    ptPatchTracker->runWarp();
+
+
+    Mat ImagePatchMax(PATCH_SIZE_MAX*120,PATCH_SIZE_MAX,CV_8U,ptPatchTracker->u8_ListPatchsMaxHost);
+    Mat ImagePatchWithBorder(PATCH_SIZE_WITH_BORDER*120,PATCH_SIZE_WITH_BORDER,CV_8U,ptPatchTracker->u8_ListPatchsWithBorderHost);
+
+
+    std::cout << "Create point end" << (int) PATCH_SIZE_WITH_BORDER<< std::endl;
+
+
+    imshow("ImagePatchWithBorder",ImagePatchWithBorder);
+    cv::waitKey(-1);
+
+    imshow("ImagePatch",ImagePatchMax);
+    cv::waitKey(-1);
+
+
+
+    u_int8_t *u8_DataDevice;
+    checkCudaErrors(cudaMalloc((void **)&u8_DataDevice,  640*480 * sizeof(u_int8_t)));
+    checkCudaErrors(cudaMemcpy(u8_DataDevice , imageGrayL2.data, 640*480 * sizeof(u_int8_t), cudaMemcpyHostToDevice));
+
+    while(1)
+    {
     PyrLK_gpu *ptPyrLK = new PyrLK_gpu(480,640);
-    ptPyrLK->run_sparse(imageGrayL2.data,imageGrayL1.data,480,640,PrevPt,iNbPt);
+    ptPyrLK->run_sparsePatch(u8_DataDevice,ptPatchTracker,imageGrayL2.rows,imageGrayL2.cols);
+
+
+    int h = 480;
+    int w = 640;
+    cv::Mat *ImageConcat = new cv::Mat(h, w*2, CV_8U);
+    cv::Mat left(*ImageConcat, cv::Rect(0, 0, w, h));
+    cv::Mat Image1(h,w,CV_8U,imageGrayL1.data);
+    Image1.copyTo(left);
+    cv::Mat right(*ImageConcat, cv::Rect(w, 0, w,h));
+    cv::Mat Image2(h,w,CV_8U,imageGrayL2.data);
+    Image2.copyTo(right);
+
+    cv::Mat im3concat;
+
+    ImageConcat->copyTo(im3concat);
+
+    for(int j=0;j<ptPatchTracker->i_IndiceFeaturesToWarp;j++)
+    {
+        cv::line( *ImageConcat, cv::Point( PrevPt[j].x, PrevPt[j].y ), cv::Point(ptPyrLK->f2_PointsNextHost[j].x+640, ptPyrLK->f2_PointsNextHost[j].y ) ,cv::Scalar(0,0,0));
+        //std::cout << "prev :  "<< f2_PointsPrevHost[j].x << " " << f2_PointsPrevHost[j].y << " Next " << f2_PointsNextHost[j].x << " " << f2_PointsNextHost[j].y << std::endl;
+    }
+
+    cv::imshow("ImageConcat",*ImageConcat);
+    cv::waitKey(-1);
+}
+
+
+    /////////////////////////////////////////////////////
+    ////////////// Test of the pyrlk algorithm/////////
+//    Mat imageGrayL1 = cv::imread("/home/lineo/Bureau/Developpement/Cuda/Projet1/data/minicooper/frame11.pgm",0);
+//    Mat imageGrayL2 = cv::imread("/home/lineo/Bureau/Developpement/Cuda/Projet1/data/minicooper/frame10.pgm",0);
+
+//    int iNbPt = 8;
+//    float2 *PrevPt,*NextPt;
+
+//    PrevPt  = (float2*)malloc(iNbPt*sizeof(float2));
+//    NextPt  = (float2*)malloc(iNbPt*sizeof(float2));
+
+//    std::cout << "Create point" << std::endl;
+//    PrevPt[0].x = (277);
+//    PrevPt[0].y = (333);
+//    PrevPt[1].x = (269);
+//    PrevPt[1].y = (194);
+//    PrevPt[2].x = (288);
+//    PrevPt[2].y = (375);
+//    PrevPt[3].x = (444);
+//    PrevPt[3].y = (131);
+//    PrevPt[4].x = (292);
+//    PrevPt[4].y = (298);
+//    PrevPt[5].x = (305);
+//    PrevPt[5].y = (325);
+//    PrevPt[6].x = (368);
+//    PrevPt[6].y = (281);
+//    PrevPt[7].x = (191);
+//    PrevPt[7].y = (197);
+
+//    int lvls = 3;
+//    std::cout << "Create point" << std::endl;
+//    NextPt[0].x = (277.0)/(1<<(lvls));
+//    NextPt[0].y = (333.0)/(1<<(lvls));
+//    NextPt[1].x = (269.0)/(1<<(lvls));
+//    NextPt[1].y = (194.0)/(1<<(lvls));
+//    NextPt[2].x = (288.0)/(1<<(lvls));
+//    NextPt[2].y = (375.0)/(1<<(lvls));
+//    NextPt[3].x = (444.0)/(1<<(lvls));
+//    NextPt[3].y = (131.0)/(1<<(lvls));
+//    NextPt[4].x = (292.0)/(1<<(lvls));
+//    NextPt[4].y = (298.0)/(1<<(lvls));
+//    NextPt[5].x = (305)/(1<<(lvls));
+//    NextPt[5].y = (325)/(1<<(lvls));
+//    NextPt[6].x = (368)/(1<<(lvls));
+//    NextPt[6].y = (281)/(1<<(lvls));
+//    NextPt[7].x = (191)/(1<<(lvls));
+//    NextPt[7].y = (197)/(1<<(lvls));
+
+//    std::cout << "Create point end" << std::endl;
+
+//    PyrLK_gpu *ptPyrLK = new PyrLK_gpu(480,640);
+//    ptPyrLK->run_sparse(imageGrayL2.data,imageGrayL1.data,480,640,PrevPt,iNbPt);
 
 
 
     ///////////////////////////////////////////////////////
     //////////////// Test of the pyrdown algorithm/////////
     ///
-    //    Mat imageGrayL1 = cv::imread("/home/xavier/Bureau/Developpement/Cuda_PyrLK-master/data/minicooper/frame11.pgm",0);
+    //    Mat imageGrayL1 = cv::imread("/home/lineo/Bureau/Developpement/Cuda/Projet1/data/minicooper/frame11.pgm",0);
     //    PyrDown_gpu *ptPyrDown = new PyrDown_gpu(imageGrayL1.rows,imageGrayL1.cols);
     //    ptPyrDown->run(imageGrayL1.rows,imageGrayL1.cols,imageGrayL1.data);
 
@@ -116,8 +219,8 @@ void System::run(void)
     /////////////////////////////////////////////////////
     ////////////// Test of the fast algorithm////////////
 
-    //    Mat imageGrayL1 = cv::imread("/home/xavier/Bureau/Developpement/Cuda_PyrLK-master/data/minicooper/frame11.pgm",0);
-    //    Mat imageGrayL2 = cv::imread("/home/xavier/Bureau/Developpement/Cuda_PyrLK-master/data/minicooper/frame10.pgm",0);
+    //    Mat imageGrayL1 = cv::imread("/home/lineo/Bureau/Developpement/Cuda/Projet1/data/minicooper/frame11.pgm",0);
+    //    Mat imageGrayL2 = cv::imread("/home/lineo/Bureau/Developpement/Cuda/Projet1/data/minicooper/frame10.pgm",0);
     
     
     //    int MaxKeypoints = 25000;
@@ -151,7 +254,7 @@ void System::run(void)
     ///////////////////////////////////////////////////////
     //////////////// Test of the pyrdown       ////////////
     ///
-    //    cv::Mat imageGrayL1 = cv::imread("/home/xavier/Bureau/Developpement/Cuda_PyrLK-master/data/minicooper/frame11.pgm",0);
+    //    cv::Mat imageGrayL1 = cv::imread("/home/lineo/Bureau/Developpement/Cuda/Projet1/data/minicooper/frame11.pgm",0);
     //    KeyFrame *ptKeyFrame = new KeyFrame(imageGrayL1.rows,imageGrayL1.cols,ToCalculate);
     //    qDebug() << "i : " << imageGrayL1.cols << " " << imageGrayL1.rows;
     //    for(int i=0;i<4;i++)
@@ -252,7 +355,7 @@ void System::run(void)
     //////////////// Test of patching/////////
     ///
 
-//    Mat imageGrayL1 = cv::imread("/home/xavier/Bureau/Developpement/Cuda_PyrLK-master/data/minicooper/frame11.pgm",0);
+//    Mat imageGrayL1 = cv::imread("/home/lineo/Bureau/Developpement/Cuda/Projet1/data/minicooper/frame11.pgm",0);
 
 //    PatchTracker * ptTracker = new PatchTracker();
 //    qDebug() << "ptTracker  0";
@@ -295,8 +398,8 @@ void System::run(void)
 //    }
 //    imshow("ImagePatch",ImagePatchMax);
 //    imshow("ImagePatchWithBorder",ImagePatchWithBorder);
-
 //    cv::waitKey(-1);
+
 }
 
 

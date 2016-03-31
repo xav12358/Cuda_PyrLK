@@ -7,11 +7,7 @@
 
 #include "global_var.h"
 
-#define PATCH_SIZE_WITH_BORDER                  11
-#define HALF_PATCH_SIZE_WITH_BORDER             5
-#define PATCH_SIZE_MAX                          17
-#define PATCH_MAX_CENTER                        8
-#define NB_FEATURE_MAX                          120
+
 
 
 class Patch;

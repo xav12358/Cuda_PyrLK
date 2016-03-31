@@ -11,10 +11,11 @@
 
 
 class PyrDown_gpu;
-
+class PatchTracker;
 class PyrLK_gpu
 {
 
+public:
     PyrDown_gpu *ptPyrDownI;
     PyrDown_gpu *ptPyrDownJ;
 
@@ -29,12 +30,13 @@ class PyrLK_gpu
     u_int8_t * u8_StatusHost;
     u_int8_t * u8_StatusDevice;
 
-public:
 
 
-    PyrLK_gpu(int rows, int cols, int iNbMaxFeatures = MAX_FEATURES_TO_SEARCH);
+
+    PyrLK_gpu(int rows, int cols, int iNbMaxFeatures = NB_FEATURE_MAX);
     ~PyrLK_gpu();
-    void run_sparse(u_int8_t  *Idata, u_int8_t*Jdata, int h, int w, float2 *f2_Points, int iNbPoints);
+    void run_sparse(u_int8_t  *u8_ImagePrevHost, u_int8_t*u8_ImageNextHost, int h, int w, float2 *f2_PointsPrevHost, int iNbPoints);
+    void run_sparsePatch(u_int8_t  *u8_ImagePrevDevice, PatchTracker *ptTracker, int h, int w);
 
 };
 

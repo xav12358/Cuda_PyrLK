@@ -19,7 +19,7 @@ __global__ void WarpPatch (u_int8_t * ptOutPatch, float *Matrix,float2* f_pos,fl
     {
 //        ftmp[threadIdx_x+threadIdx_y*11].x = blockIdx.x;
 
-        ftmp[blockIdx.x].x = PATCH_SIZE_WITH_BORDER*PATCH_SIZE_WITH_BORDER* blockIdx.x;
+        //ftmp[blockIdx.x].x = PATCH_SIZE_WITH_BORDER*PATCH_SIZE_WITH_BORDER* blockIdx.x;
         //        f_deltaPixel = f_pos[blockIdx.x] - ceil(f_pos[blockIdx.x] ) ;
         iPatchIndex = PATCH_SIZE_WITH_BORDER*PATCH_SIZE_WITH_BORDER* blockIdx.x;    // index to the current patch
     }
@@ -96,11 +96,11 @@ void PatchTracker::addPatchToWarp(u_int8_t * ptImage,int row,int col,float px,fl
         ptPatchMaxHost =  u8_ListPatchsMaxHost + PATCH_SIZE_MAX*y  + Step*i_IndiceFeaturesToWarp;
         for(int x = 0;x<PATCH_SIZE_MAX;x++,ptPatchMaxHost++)
         {
-            if(x>3 && x<13 && y>3 && y<13)
-                //                *ptPatchMaxHost  =  ptImage[indexCeilx+x + (indexCeily+y)*col];
-                *ptPatchMaxHost = 255;
-            else
-                *ptPatchMaxHost = 0;
+            //if(x>3 && x<13 && y>3 && y<13)
+                *ptPatchMaxHost  =  ptImage[indexCeilx+x + (indexCeily+y)*col];
+             //   *ptPatchMaxHost = 255;
+            //else
+             //   *ptPatchMaxHost = 0;
 
         }
     }
@@ -157,10 +157,8 @@ void PatchTracker::runWarp(void)
 
 
 //    checkCudaErrors( cudaMemcpy(f2_PositionFeaturesHost, f2_PositionFeaturesDevice,PATCH_SIZE_WITH_BORDER*PATCH_SIZE_WITH_BORDER*sizeof(u_int8_t) , cudaMemcpyDeviceToHost) );
-
     checkCudaErrors( cudaMemcpy(u8_ListPatchsWithBorderHost, u8_PatchsWithBorderDevice,PATCH_SIZE_WITH_BORDER*PATCH_SIZE_WITH_BORDER*i_IndiceFeaturesToWarp*sizeof(u_int8_t) , cudaMemcpyDeviceToHost) );
-
-    checkCudaErrors( cudaMemcpy(ftmpHost, ftmpDevice,PATCH_SIZE_WITH_BORDER*PATCH_SIZE_WITH_BORDER*sizeof(float2) , cudaMemcpyDeviceToHost) );
+    //checkCudaErrors( cudaMemcpy(ftmpHost, ftmpDevice,PATCH_SIZE_WITH_BORDER*PATCH_SIZE_WITH_BORDER*sizeof(float2) , cudaMemcpyDeviceToHost) );
 
 
 }
