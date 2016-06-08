@@ -22,13 +22,13 @@ public:
     int iNbMaxFeaturesLK;
 
 //    float *f2_PointsPrevHost;
-    float2 *f2_PointsPrevDevice;
+    float2 *f2_PointsPrev_Device;
 
-    float2 *f2_PointsNextHost;
-    float2 *f2_PointsNextDevice;
+    float2 *f2_PointsNext_Host;
+    float2 *f2_PointsNext_Device;
 
-    u_int8_t * u8_StatusHost;
-    u_int8_t * u8_StatusDevice;
+    u_int8_t * u8_Status_Host;
+    u_int8_t * u8_Status_Device;
 
 
 

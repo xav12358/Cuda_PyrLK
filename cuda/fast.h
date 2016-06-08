@@ -13,14 +13,14 @@ class Fast_gpu
 
 public:
 
-    u_int8_t * imglocal;
+    u_int8_t * imglocal_Device;
     int cols,rows;
 
-    short2* kpLoc;
-    int* score;
+    short2* kpLoc_Device;
+    int* score_Device;
 
-    short2* kpLocFinal;
-    float* scoreFinal;
+    short2* kpLocNonMaxSuppression_Device;
+    float* scoreNonMaxSuppression_Device;
 
     int maxKeypoints;
     int threshold;

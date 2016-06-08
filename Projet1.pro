@@ -287,9 +287,7 @@ HEADERS += \
     include/Eigen/src/SVD/JacobiSVD.h \
     include/Eigen/src/SVD/JacobiSVD_MKL.h \
     include/Eigen/src/SVD/UpperBidiagonalization.h \
-    include/Eigen/src/UmfPackSupport/UmfPackSupport.h \
-    patch.h
-
+    include/Eigen/src/UmfPackSupport/UmfPackSupport.h
 
 
 #######################################################################################
@@ -301,6 +299,7 @@ PKGCONFIG += opencv
 
 
 INCLUDEPATH += /usr/include/opencv
+
 LIBS += -L/usr/local/lib
 LIBS += -L/usr/lib/x86_64-linux-gnu
 LIBS += -lm
@@ -328,12 +327,13 @@ CUDA_DIR = /usr/lib/nvidia-cuda-toolkit             # Path to cuda toolkit insta
 
 SYSTEM_NAME = unix         # Depending on your system either 'Win32', 'x64', or 'Win64'
 SYSTEM_TYPE = 64           # '32' or '64', depending on your system
-CUDA_ARCH = compute_11#sm_21           # Type of CUDA architecture, for example 'compute_10', 'compute_11', 'sm_10'
+CUDA_ARCH = sm_21           # Type of CUDA architecture, for example 'compute_10', 'compute_11', 'sm_10'
 NVCC_OPTIONS = #--use_fast_math
 
 
 # include paths
 INCLUDEPATH += $$CUDA_DIR/include
+INCLUDEPATH += ../Projet1/include
 
 # library directories
 #QMAKE_LIBDIR += /usr/lib/i386-linux-gnu#/usr/lib/nvidia-cuda-toolkit/lib #/usr/lib/i386-linux-gnu #$CUDA_DIR/lib/

@@ -23,12 +23,12 @@ public:
 
     int irow,icol;
 
-    u_int8_t *u8_ptData; ///< Store the image data
+    u_int8_t *u8_ptData_Host; ///< Store the image data
 
     // Max KeyPoints location
-    short2* kpLoc;
-    short2* kpLocMax;
-    float* scoreMax;
+    short2* kpLoc_Device;
+    short2* kpLocMax_Device;
+    float* scoreMax_Host;
 
     int iNbKeypoints;   ///< Number of keypoints
     int iNbKeypointsMax;   ///< Number of keypoints
@@ -45,17 +45,17 @@ class KeyFrame
     KeyFrameType eKFType;   ///< Store the type of the keyframe (not allocate memory on gpu for storetype keyframe)
 
     // Cuda memory location for the image
-    u_int8_t *u8_ptDataIn;      ///< Image In
-    u_int8_t *u8_ptDataOut;     ///< Image Out
-    u_int8_t *u8_ptTmpBloc;     ///< Image Tmp
+    u_int8_t *u8_ptDataIn_Device;      ///< Image In
+    u_int8_t *u8_ptDataOut_Device;     ///< Image Out
+    u_int8_t *u8_ptTmpBloc_Device;     ///< Image Tmp
 
 
     // Cuda memory location for the keypoints and maxkeypoint location
-    short2* kpLoc;
-    int* vCorners;
+    short2* kpLoc_Device;
+    int* vCorners_Device;
 
-    short2* kpLocMax;
-    float* vCornersMax;
+    short2* kpLocMax_Device;
+    float* vCornersMax_Device;
 
 
 public:

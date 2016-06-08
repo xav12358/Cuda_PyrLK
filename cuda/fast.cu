@@ -13,29 +13,29 @@ Fast_gpu::Fast_gpu(int cols, int rows,int maxKeypoints)
     this->rows = rows;
     this->maxKeypoints = maxKeypoints;
 
-    checkCudaErrors(cudaMalloc((void **)&kpLoc,  maxKeypoints * sizeof(short2)));
-    checkCudaErrors(cudaMalloc((void **)&score,  maxKeypoints * sizeof(int)));
-    checkCudaErrors(cudaMalloc((void **)&imglocal,  rows*cols * sizeof(u_int8_t)));
+    checkCudaErrors(cudaMalloc((void **)&kpLoc_Device,  maxKeypoints * sizeof(short2)));
+    checkCudaErrors(cudaMalloc((void **)&score_Device,  maxKeypoints * sizeof(int)));
+    checkCudaErrors(cudaMalloc((void **)&imglocal_Device,  rows*cols * sizeof(u_int8_t)));
 
-    checkCudaErrors(cudaMalloc((void **)&kpLocFinal,  maxKeypoints * sizeof(short2)));
-    checkCudaErrors(cudaMalloc((void **)&scoreFinal,  maxKeypoints * sizeof(float)));
+    checkCudaErrors(cudaMalloc((void **)&kpLocNonMaxSuppression_Device,  maxKeypoints * sizeof(short2)));
+    checkCudaErrors(cudaMalloc((void **)&scoreNonMaxSuppression_Device,  maxKeypoints * sizeof(float)));
 
 
 }
 
 
-int Fast_gpu::run_calcKeypoints(u_int8_t * img,int cols,int rows, short2* kpLoc, int maxKeypoints, int* score, int threshold)
+int Fast_gpu::run_calcKeypoints(u_int8_t * img,int cols,int rows, short2* kpLoc_Device, int maxKeypoints, int* score_Device, int threshold)
 {
 
-    int nbKeypoints =  calcKeypoints_gpu(img, cols, rows, kpLoc, maxKeypoints ,  score, threshold);
+    int nbKeypoints =  calcKeypoints_gpu(img, cols, rows, kpLoc_Device, maxKeypoints ,  score_Device, threshold);
 
     return nbKeypoints;
 }
 
 
-int Fast_gpu::run_nonmaxSuppression_gpu(const short2* kpLoc, int count, int* score,int rows,int cols, short2* kpLocFinal, float* scoreFinal)
+int Fast_gpu::run_nonmaxSuppression_gpu(const short2* kpLoc_Device, int count, int* score_Device,int rows,int cols, short2* kpLocNonMaxSuppression_Device, float* scoreNonMaxSuppression_Device)
 {
-    int nbKeypointsNonMaxSuppression = nonmaxSuppression_gpu(kpLoc, count, score,rows,cols, kpLocFinal, scoreFinal);
+    int nbKeypointsNonMaxSuppression = nonmaxSuppression_gpu(kpLoc_Device, count, score_Device,rows,cols, kpLocNonMaxSuppression_Device, scoreNonMaxSuppression_Device);
 
     return nbKeypointsNonMaxSuppression;
 }
@@ -48,14 +48,14 @@ int Fast_gpu::run_nonmaxSuppression_gpu(const short2* kpLoc, int count, int* sco
 ///
 int Fast_gpu::run_calcKeypoints(u_int8_t * img,  int threshold)
 {
-    checkCudaErrors(cudaMemcpy(imglocal , img, rows * cols * sizeof(u_int8_t), cudaMemcpyHostToDevice));
+    checkCudaErrors(cudaMemcpy(imglocal_Device , img, rows * cols * sizeof(u_int8_t), cudaMemcpyHostToDevice));
 
     dim3 blocks_x(ceil(cols / ( BLOCK_SIZE_X)), ceil(rows / BLOCK_SIZE_Y));
     dim3 threads_x(BLOCK_SIZE_X, BLOCK_SIZE_Y);
 
-    int nbKeypoints =  calcKeypoints_gpu(imglocal, cols, rows, kpLoc, maxKeypoints ,  score, threshold);
+    int nbKeypoints =  calcKeypoints_gpu(imglocal_Device, cols, rows, kpLoc_Device, maxKeypoints ,  score_Device, threshold);
 
-    int nbKeypointsNonMaxSuppression = nonmaxSuppression_gpu(kpLoc, nbKeypoints, score,rows,cols, kpLocFinal, scoreFinal);
+    int nbKeypointsNonMaxSuppression = nonmaxSuppression_gpu(kpLoc_Device, nbKeypoints, score_Device,rows,cols, kpLocNonMaxSuppression_Device, scoreNonMaxSuppression_Device);
 
     return nbKeypoints;
 
@@ -69,7 +69,7 @@ int Fast_gpu::run_calcKeypoints(u_int8_t * img,  int threshold)
 ///
 int Fast_gpu::run_nonmaxSuppression(int nbKeypoints)
 {
-    int nbKeypointsNonMaxSuppression = nonmaxSuppression_gpu(kpLoc, nbKeypoints, score,rows,cols, kpLocFinal, scoreFinal);
+    int nbKeypointsNonMaxSuppression = nonmaxSuppression_gpu(kpLoc_Device, nbKeypoints, score_Device,rows,cols, kpLocNonMaxSuppression_Device, scoreNonMaxSuppression_Device);
 
     return nbKeypointsNonMaxSuppression;
 }
@@ -283,14 +283,14 @@ __device__ __forceinline__ bool isKeyPoint(int mask1, int mask2)
 
 
 ///////////////////////////////////////////////////////////////////
-/// \brief cornerScore
+/// \brief cornerscore_Device
 /// \param C
 /// \param v
 /// \param threshold
 /// \return
 ///
 ///
-__device__ int cornerScore(const uint C[4], const int v, const int threshold)
+__device__ int cornerscore_Device(const uint C[4], const int v, const int threshold)
 {
     // binary search in [threshold + 1, 255]
     int min = threshold + 1;
@@ -320,14 +320,14 @@ __device__ int cornerScore(const uint C[4], const int v, const int threshold)
 /// \param img
 /// \param cols
 /// \param rows
-/// \param kpLoc
+/// \param kpLoc_Device
 /// \param maxKeypoints
-/// \param score
+/// \param score_Device
 /// \param threshold
-/// \param calcScore
+/// \param calcscore_Device
 ///
 #define MASK 3
-__global__ void calcKeypoints(const u_int8_t* img,int cols ,int rows,short2* kpLoc, const unsigned int maxKeypoints, int *score, const int threshold,bool calcScore)
+__global__ void calcKeypoints(const u_int8_t* img,int cols ,int rows,short2* kpLoc_Device, const unsigned int maxKeypoints, int *score_Device, const int threshold,bool calcscore_Device)
 {
 
     const int j = threadIdx.x + blockIdx.x * blockDim.x + MASK;//3;
@@ -375,13 +375,13 @@ __global__ void calcKeypoints(const u_int8_t* img,int cols ,int rows,short2* kpL
 
         if (isKeyPoint(mask1, mask2))
         {
-            if (calcScore)
-                score[i*cols+ j] = cornerScore(C, v, threshold);
+            if (calcscore_Device)
+                score_Device[i*cols+ j] = cornerscore_Device(C, v, threshold);
 
             const unsigned int ind = atomicInc(&g_counter, (unsigned int)(-1));
 
             if (ind < maxKeypoints)
-                kpLoc[ind] = make_short2(j, i);
+                kpLoc_Device[ind] = make_short2(j, i);
         }
     }
 }
@@ -392,13 +392,13 @@ __global__ void calcKeypoints(const u_int8_t* img,int cols ,int rows,short2* kpL
 /// \param img
 /// \param cols
 /// \param rows
-/// \param kpLoc
+/// \param kpLoc_Device
 /// \param maxKeypoints
-/// \param score
+/// \param score_Device
 /// \param threshold
 /// \return
 ///
-int calcKeypoints_gpu(u_int8_t * img,int cols,int rows, short2* kpLoc, int maxKeypoints, int* score, int threshold)
+int calcKeypoints_gpu(u_int8_t * img,int cols,int rows, short2* kpLoc_Device, int maxKeypoints, int* score_Device, int threshold)
 {
     void* counter_ptr;
     cudaGetSymbolAddress(&counter_ptr, g_counter);
@@ -411,7 +411,7 @@ int calcKeypoints_gpu(u_int8_t * img,int cols,int rows, short2* kpLoc, int maxKe
 
     cudaMemset(counter_ptr, 0, sizeof(unsigned int));
 
-    calcKeypoints<<<grid, block>>>(img,cols,rows, kpLoc, maxKeypoints, score, threshold,true);
+    calcKeypoints<<<grid, block>>>(img,cols,rows, kpLoc_Device, maxKeypoints, score_Device, threshold,true);
 
     cudaGetLastError();
 
@@ -428,43 +428,43 @@ int calcKeypoints_gpu(u_int8_t * img,int cols,int rows, short2* kpLoc, int maxKe
 
 ///////////////////////////////////////////////////////////////////////
 /// \brief nonmaxSuppression
-/// \param kpLoc
+/// \param kpLoc_Device
 /// \param count
-/// \param scoreMat
+/// \param score_DeviceMat
 /// \param cols
 /// \param rows
 /// \param locFinal
 /// \param responseFinal
 ///
-__global__ void nonmaxSuppression(const short2* kpLoc, int count, const int* scoreMat,int cols,int rows,short2* locFinal, float* responseFinal)
+__global__ void nonmaxSuppression(const short2* kpLoc_Device, int count, const int* score_DeviceMat,int cols,int rows,short2* locFinal, float* responseFinal)
 {
 
     const int kpIdx = threadIdx.x + blockIdx.x * blockDim.x;
 
     if (kpIdx < count)
     {
-        short2 loc = kpLoc[kpIdx];
+        short2 loc = kpLoc_Device[kpIdx];
 
-        int score = tex_i( scoreMat,loc.y, loc.x,cols);
+        int score_Device = tex_i( score_DeviceMat,loc.y, loc.x,cols);
 
         bool ismax =
-                score > tex_i( scoreMat,loc.y - 1, loc.x - 1,cols) &&
-                score > tex_i( scoreMat,loc.y - 1, loc.x    ,cols) &&
-                score > tex_i( scoreMat,loc.y - 1, loc.x + 1,cols) &&
+                score_Device > tex_i( score_DeviceMat,loc.y - 1, loc.x - 1,cols) &&
+                score_Device > tex_i( score_DeviceMat,loc.y - 1, loc.x    ,cols) &&
+                score_Device > tex_i( score_DeviceMat,loc.y - 1, loc.x + 1,cols) &&
 
-                score > tex_i( scoreMat,loc.y    , loc.x - 1,cols) &&
-                score > tex_i( scoreMat,loc.y    , loc.x + 1,cols) &&
+                score_Device > tex_i( score_DeviceMat,loc.y    , loc.x - 1,cols) &&
+                score_Device > tex_i( score_DeviceMat,loc.y    , loc.x + 1,cols) &&
 
-                score > tex_i( scoreMat,loc.y + 1, loc.x - 1,cols) &&
-                score > tex_i( scoreMat,loc.y + 1, loc.x    ,cols) &&
-                score > tex_i( scoreMat,loc.y + 1, loc.x + 1,cols);
+                score_Device > tex_i( score_DeviceMat,loc.y + 1, loc.x - 1,cols) &&
+                score_Device > tex_i( score_DeviceMat,loc.y + 1, loc.x    ,cols) &&
+                score_Device > tex_i( score_DeviceMat,loc.y + 1, loc.x + 1,cols);
 
         if (ismax)
         {
             const unsigned int ind = atomicInc(&g_counter, (unsigned int)(-1));
 
             locFinal[ind] = loc;
-            responseFinal[ind] = static_cast<float>(score);
+            responseFinal[ind] = static_cast<float>(score_Device);
         }
     }
 
@@ -473,16 +473,16 @@ __global__ void nonmaxSuppression(const short2* kpLoc, int count, const int* sco
 
 ////////////////////////////////////////////////////
 /// \brief nonmaxSuppression_gpu
-/// \param kpLoc
+/// \param kpLoc_Device
 /// \param count
-/// \param score
+/// \param score_Device
 /// \param rows
 /// \param cols
 /// \param loc
 /// \param response
 /// \return
 ///
-int nonmaxSuppression_gpu(const short2* kpLoc, int count, int* score,int rows,int cols, short2* loc, float* response)
+int nonmaxSuppression_gpu(const short2* kpLoc_Device, int count, int* score_Device,int rows,int cols, short2* loc, float* response)
 {
     void* counter_ptr;
     cudaGetSymbolAddress(&counter_ptr, g_counter);
@@ -493,7 +493,7 @@ int nonmaxSuppression_gpu(const short2* kpLoc, int count, int* score,int rows,in
     grid.x = ceil(count /block.x);
 
     cudaMemset(counter_ptr, 0, sizeof(unsigned int));
-    nonmaxSuppression<<<grid, block>>>(kpLoc, count, score,cols,rows, loc, response);
+    nonmaxSuppression<<<grid, block>>>(kpLoc_Device, count, score_Device,cols,rows, loc, response);
     cudaGetLastError();
 
     cudaDeviceSynchronize();

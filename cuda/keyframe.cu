@@ -10,19 +10,19 @@ void Level::BuildLevel(int rows,int cols)
     icol = cols;
     irow = rows;
 
-    checkCudaErrors(cudaMalloc((void **)&kpLoc,  icol*irow*__RATIO__ * sizeof(short2)));
-    //checkCudaErrors(cudaMalloc((void **)&vCorners,  icol*irow*__RATIO__ * sizeof(int)));
+    checkCudaErrors(cudaMalloc((void **)&kpLoc_Device,  icol*irow*__RATIO__ * sizeof(short2)));
+    //checkCudaErrors(cudaMalloc((void **)&vCorners_Device,  icol*irow*__RATIO__ * sizeof(int)));
     //checkCudaErrors(cudaMalloc((void **)&ptData,  rows*cols * sizeof(u_int8_t)));
 
-    //checkCudaErrors(cudaMalloc((void **)&kpLocMax,  icol*irow*__RATIO__ * sizeof(short2)));
-    //checkCudaErrors(cudaMalloc((void **)&vCornersMax,  icol*irow*__RATIO__ * sizeof(float)));
+    //checkCudaErrors(cudaMalloc((void **)&kpLocMax_Device,  icol*irow*__RATIO__ * sizeof(short2)));
+    //checkCudaErrors(cudaMalloc((void **)&vCornersMax_Device,  icol*irow*__RATIO__ * sizeof(float)));
 
 
-    u8_ptData = (u_int8_t*)malloc(irow*icol*sizeof(u_int8_t));
+    u8_ptData_Host = (u_int8_t*)malloc(irow*icol*sizeof(u_int8_t));
 
-    //kpLoc = (short2*)malloc(irow*icol*__RATIO__*sizeof(short2));
-    kpLocMax = (short2*)malloc(irow*icol*__RATIO__*sizeof(short2));
-    scoreMax = (float*)malloc(irow*icol*__RATIO__*sizeof(float));
+    //kpLoc_Device = (short2*)malloc(irow*icol*__RATIO__*sizeof(short2));
+    kpLocMax_Device = (short2*)malloc(irow*icol*__RATIO__*sizeof(short2));
+    scoreMax_Host = (float*)malloc(irow*icol*__RATIO__*sizeof(float));
 
 }
 
@@ -44,14 +44,14 @@ KeyFrame::KeyFrame(int row, int col, KeyFrameType eKFTypeL)
     {
     case ToCalculate:
         // Create the tmpBloc for image downsampling
-        checkCudaErrors(cudaMalloc((void **)&u8_ptDataIn,  row*col * sizeof(u_int8_t)));
-        checkCudaErrors(cudaMalloc((void **)&u8_ptDataOut,  row*col * sizeof(u_int8_t)));
-        checkCudaErrors(cudaMalloc((void **)&u8_ptTmpBloc,  row*col * sizeof(u_int8_t)));
+        checkCudaErrors(cudaMalloc((void **)&u8_ptDataIn_Device,  row*col * sizeof(u_int8_t)));
+        checkCudaErrors(cudaMalloc((void **)&u8_ptDataOut_Device,  row*col * sizeof(u_int8_t)));
+        checkCudaErrors(cudaMalloc((void **)&u8_ptTmpBloc_Device,  row*col * sizeof(u_int8_t)));
 
-        checkCudaErrors(cudaMalloc((void **)&kpLoc,  icol*irow*__RATIO__ * sizeof(short2)));
-        checkCudaErrors(cudaMalloc((void **)&vCorners,  icol*irow*__RATIO__ * sizeof(int)));
-        checkCudaErrors(cudaMalloc((void **)&kpLocMax,  icol*irow*__RATIO__ * sizeof(short2)));
-        checkCudaErrors(cudaMalloc((void **)&vCornersMax,  icol*irow*__RATIO__ * sizeof(float)));
+        checkCudaErrors(cudaMalloc((void **)&kpLoc_Device,  icol*irow*__RATIO__ * sizeof(short2)));
+        checkCudaErrors(cudaMalloc((void **)&vCorners_Device,  icol*irow*__RATIO__ * sizeof(int)));
+        checkCudaErrors(cudaMalloc((void **)&kpLocMax_Device,  icol*irow*__RATIO__ * sizeof(short2)));
+        checkCudaErrors(cudaMalloc((void **)&vCornersMax_Device,  icol*irow*__RATIO__ * sizeof(float)));
         break;
 
     case ToStore:
@@ -83,7 +83,7 @@ KeyFrame::~KeyFrame()
 ///
 
 
-void KeyFrame::MakePyramid(u_int8_t *u8_ptDataSrc)
+void KeyFrame::MakePyramid(u_int8_t *u8_ptDataSrc_Host)
 {
     ///////////////////////////////////
     // Fill each level with the data
@@ -94,12 +94,12 @@ void KeyFrame::MakePyramid(u_int8_t *u8_ptDataSrc)
     i_tabThreshold[2]= 30;
     i_tabThreshold[3]= 20;
     //copy the first image
-    checkCudaErrors(cudaMemcpy(u8_ptDataIn  , u8_ptDataSrc, irow * icol * sizeof(u_int8_t), cudaMemcpyHostToDevice));
+    checkCudaErrors(cudaMemcpy(u8_ptDataIn_Device  , u8_ptDataSrc_Host, irow * icol * sizeof(u_int8_t), cudaMemcpyHostToDevice));
 
     //Copy the source image to the first level
     int size = irow * icol/4;
-    u_int32_t *u32_ptDataSrc = (u_int32_t *)(u8_ptDataSrc);
-    u_int32_t *u32_ptDataDst = (u_int32_t *)((Levels[0].u8_ptData));
+    u_int32_t *u32_ptDataSrc = (u_int32_t *)(u8_ptDataSrc_Host);
+    u_int32_t *u32_ptDataDst = (u_int32_t *)((Levels[0].u8_ptData_Host));
 
     for(int i=0;i<size;i++)
     {
@@ -112,37 +112,37 @@ void KeyFrame::MakePyramid(u_int8_t *u8_ptDataSrc)
     {
         if(u8_indice%2 == 0)
         {
-            PyrDown_gpu::run(Levels[i].irow,Levels[i].icol,u8_ptDataIn,u8_ptDataOut,u8_ptTmpBloc);
-            checkCudaErrors(cudaMemcpy(Levels[i+1].u8_ptData  , u8_ptDataOut, Levels[i+1].icol*Levels[i+1].irow * sizeof(u_int8_t), cudaMemcpyDeviceToHost));
+            PyrDown_gpu::run(Levels[i].irow,Levels[i].icol,u8_ptDataIn_Device,u8_ptDataOut_Device,u8_ptTmpBloc_Device);
+            checkCudaErrors(cudaMemcpy(Levels[i+1].u8_ptData_Host  , u8_ptDataOut_Device, Levels[i+1].icol*Levels[i+1].irow * sizeof(u_int8_t), cudaMemcpyDeviceToHost));
 
-            int iNbKeyFrames    = Fast_gpu::run_calcKeypoints(u8_ptDataIn,Levels[i].icol,Levels[i].irow, kpLoc, Levels[i].icol*Levels[i].irow*__RATIO__, vCorners, i_tabThreshold[i]);
-            int iNbKeyFramesMax = Fast_gpu::run_nonmaxSuppression_gpu(kpLoc, iNbKeyFrames, vCorners, Levels[i].irow, Levels[i].icol, kpLocMax, vCornersMax);
+            int iNbKeyFrames    = Fast_gpu::run_calcKeypoints(u8_ptDataIn_Device,Levels[i].icol,Levels[i].irow, kpLoc_Device, Levels[i].icol*Levels[i].irow*__RATIO__, vCorners_Device, i_tabThreshold[i]);
+            int iNbKeyFramesMax = Fast_gpu::run_nonmaxSuppression_gpu(kpLoc_Device, iNbKeyFrames, vCorners_Device, Levels[i].irow, Levels[i].icol, kpLocMax_Device, vCornersMax_Device);
             Levels[i].iNbKeypoints = iNbKeyFrames;
             Levels[i].iNbKeypointsMax = iNbKeyFramesMax;
-            //checkCudaErrors(cudaMemcpy(Levels[i].kpLoc  , kpLoc, iNbKeyFrames * sizeof(short2), cudaMemcpyDeviceToHost));
-            checkCudaErrors(cudaMemcpy(Levels[i].kpLocMax  , kpLocMax, iNbKeyFramesMax * sizeof(short2), cudaMemcpyDeviceToHost));
+            //checkCudaErrors(cudaMemcpy(Levels[i].kpLoc_Device  , kpLoc_Device, iNbKeyFrames * sizeof(short2), cudaMemcpyDeviceToHost));
+            checkCudaErrors(cudaMemcpy(Levels[i].kpLocMax_Device  , kpLocMax_Device, iNbKeyFramesMax * sizeof(short2), cudaMemcpyDeviceToHost));
 
         }else{
-            PyrDown_gpu::run(Levels[i].irow,Levels[i].icol,u8_ptDataOut,u8_ptDataIn,u8_ptTmpBloc);
-            checkCudaErrors(cudaMemcpy(Levels[i+1].u8_ptData  , u8_ptDataIn, Levels[i+1].icol*Levels[i+1].irow * sizeof(u_int8_t), cudaMemcpyDeviceToHost));
+            PyrDown_gpu::run(Levels[i].irow,Levels[i].icol,u8_ptDataOut_Device,u8_ptDataIn_Device,u8_ptTmpBloc_Device);
+            checkCudaErrors(cudaMemcpy(Levels[i+1].u8_ptData_Host  , u8_ptDataIn_Device, Levels[i+1].icol*Levels[i+1].irow * sizeof(u_int8_t), cudaMemcpyDeviceToHost));
 
-            int iNbKeyFrames    = Fast_gpu::run_calcKeypoints(u8_ptDataOut,Levels[i].icol,Levels[i].irow, kpLoc, Levels[i].icol*Levels[i].irow*__RATIO__, vCorners, i_tabThreshold[i]);
-            int iNbKeyFramesMax = Fast_gpu::run_nonmaxSuppression_gpu(kpLoc, iNbKeyFrames, vCorners, Levels[i].irow, Levels[i].icol, kpLocMax, vCornersMax);
+            int iNbKeyFrames    = Fast_gpu::run_calcKeypoints(u8_ptDataOut_Device,Levels[i].icol,Levels[i].irow, kpLoc_Device, Levels[i].icol*Levels[i].irow*__RATIO__, vCorners_Device, i_tabThreshold[i]);
+            int iNbKeyFramesMax = Fast_gpu::run_nonmaxSuppression_gpu(kpLoc_Device, iNbKeyFrames, vCorners_Device, Levels[i].irow, Levels[i].icol, kpLocMax_Device, vCornersMax_Device);
             Levels[i].iNbKeypoints = iNbKeyFrames;
             Levels[i].iNbKeypointsMax = iNbKeyFramesMax;
-            //checkCudaErrors(cudaMemcpy(Levels[i].kpLoc  , kpLoc, iNbKeyFrames * sizeof(short2), cudaMemcpyDeviceToHost));
-            checkCudaErrors(cudaMemcpy(Levels[i].kpLocMax  , kpLocMax, iNbKeyFramesMax * sizeof(short2), cudaMemcpyDeviceToHost));
+            //checkCudaErrors(cudaMemcpy(Levels[i].kpLoc_Device  , kpLoc_Device, iNbKeyFrames * sizeof(short2), cudaMemcpyDeviceToHost));
+            checkCudaErrors(cudaMemcpy(Levels[i].kpLocMax_Device  , kpLocMax_Device, iNbKeyFramesMax * sizeof(short2), cudaMemcpyDeviceToHost));
         }
         u8_indice++;
     }
 
     // Process the last level f
-    int iNbKeyFrames    = Fast_gpu::run_calcKeypoints(u8_ptDataOut,Levels[LEVELS-1].icol,Levels[LEVELS-1].irow, kpLoc, Levels[LEVELS-1].icol*Levels[LEVELS-1].irow*__RATIO__, vCorners, i_tabThreshold[LEVELS-1]);
-    int iNbKeyFramesMax = Fast_gpu::run_nonmaxSuppression_gpu(kpLoc, iNbKeyFrames, vCorners, Levels[LEVELS-1].irow, Levels[LEVELS-1].icol, kpLocMax, vCornersMax);
+    int iNbKeyFrames    = Fast_gpu::run_calcKeypoints(u8_ptDataOut_Device,Levels[LEVELS-1].icol,Levels[LEVELS-1].irow, kpLoc_Device, Levels[LEVELS-1].icol*Levels[LEVELS-1].irow*__RATIO__, vCorners_Device, i_tabThreshold[LEVELS-1]);
+    int iNbKeyFramesMax = Fast_gpu::run_nonmaxSuppression_gpu(kpLoc_Device, iNbKeyFrames, vCorners_Device, Levels[LEVELS-1].irow, Levels[LEVELS-1].icol, kpLocMax_Device, vCornersMax_Device);
     Levels[LEVELS-1].iNbKeypoints = iNbKeyFrames;
     Levels[LEVELS-1].iNbKeypointsMax = iNbKeyFramesMax;
-    //checkCudaErrors(cudaMemcpy(Levels[i].kpLoc  , kpLoc, iNbKeyFrames * sizeof(short2), cudaMemcpyDeviceToHost));
-    checkCudaErrors(cudaMemcpy(Levels[LEVELS-1].kpLocMax  , kpLocMax, iNbKeyFramesMax * sizeof(short2), cudaMemcpyDeviceToHost));
+    //checkCudaErrors(cudaMemcpy(Levels[i].kpLoc_Device  , kpLoc_Device, iNbKeyFrames * sizeof(short2), cudaMemcpyDeviceToHost));
+    checkCudaErrors(cudaMemcpy(Levels[LEVELS-1].kpLocMax_Device  , kpLocMax_Device, iNbKeyFramesMax * sizeof(short2), cudaMemcpyDeviceToHost));
 
 }
 

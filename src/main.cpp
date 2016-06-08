@@ -1,5 +1,4 @@
-#include <QtCore/QCoreApplication>
-
+//#include <QtCore/QCoreApplication>
 #include <include/system.h>
 
 

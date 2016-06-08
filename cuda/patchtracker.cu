@@ -50,29 +50,29 @@ PatchTracker::PatchTracker():
     channelDesc = cudaCreateChannelDesc<u_int8_t>();
 
     // Create data in GPU memory
-//    checkCudaErrors(cudaMallocArray(&u8_PatchsWithBorderDevice, &channelDesc, PATCH_SIZE_WITH_BORDER, PATCH_SIZE_WITH_BORDER*NB_FEATURE_MAX));
-    checkCudaErrors(cudaMalloc((void **)&u8_PatchsWithBorderDevice,  PATCH_SIZE_WITH_BORDER*PATCH_SIZE_WITH_BORDER*NB_FEATURE_MAX * sizeof(u_int8_t)));
+//    checkCudaErrors(cudaMallocArray(&u8_PatchsWithBorder_Device, &channelDesc, PATCH_SIZE_WITH_BORDER, PATCH_SIZE_WITH_BORDER*NB_FEATURE_MAX));
+    checkCudaErrors(cudaMalloc((void **)&u8_PatchsWithBorder_Device,  PATCH_SIZE_WITH_BORDER*PATCH_SIZE_WITH_BORDER*NB_FEATURE_MAX * sizeof(u_int8_t)));
 
 
-    checkCudaErrors(cudaMallocArray(&Array_PatchsMaxDevice, &channelDesc, PATCH_SIZE_MAX, PATCH_SIZE_MAX*NB_FEATURE_MAX));
+    checkCudaErrors(cudaMallocArray(&Array_PatchsMax_Device, &channelDesc, PATCH_SIZE_MAX, PATCH_SIZE_MAX*NB_FEATURE_MAX));
     //    checkCudaErrors(cudaBindTexture2D(0,&PatchListOut,listPatchsDevice,&desc,PATCH_SIZE_MAX , PATCH_SIZE_MAX*NB_FEATURE_MAX ,PATCH_SIZE_MAX));
 
     // Create data in Host memory
-    u8_ListPatchsMaxHost        = (u_int8_t*)malloc(PATCH_SIZE_MAX*PATCH_SIZE_MAX*NB_FEATURE_MAX*sizeof(u_int8_t));
-    u8_ListPatchsWithBorderHost = (u_int8_t*)malloc(PATCH_SIZE_WITH_BORDER*PATCH_SIZE_WITH_BORDER*NB_FEATURE_MAX*sizeof(u_int8_t));
+    u8_ListPatchsMax_Host        = (u_int8_t*)malloc(PATCH_SIZE_MAX*PATCH_SIZE_MAX*NB_FEATURE_MAX*sizeof(u_int8_t));
+    u8_ListPatchsWithBorder_Host = (u_int8_t*)malloc(PATCH_SIZE_WITH_BORDER*PATCH_SIZE_WITH_BORDER*NB_FEATURE_MAX*sizeof(u_int8_t));
 
     // Create feature location
-    f2_PositionFeaturesHost = (float2*)malloc(NB_FEATURE_MAX*sizeof(float2));
-    checkCudaErrors(cudaMalloc((void **)&f2_PositionFeaturesDevice,  NB_FEATURE_MAX * sizeof(float2)));
+    f2_PositionFeatures_Host = (float2*)malloc(NB_FEATURE_MAX*sizeof(float2));
+    checkCudaErrors(cudaMalloc((void **)&f2_PositionFeatures_Device,  NB_FEATURE_MAX * sizeof(float2)));
 
 
     // Create matrix
-    f_MatrixHost = (float*)malloc(4*sizeof(float));
-    checkCudaErrors(cudaMalloc((void **)&f_MatrixDevice,  4 * sizeof(float)));
+    f_Matrix_Host = (float*)malloc(4*sizeof(float));
+    checkCudaErrors(cudaMalloc((void **)&f_Matrix_Device,  4 * sizeof(float)));
 
     //tmp matrix
-    ftmpHost        = (float2*)malloc(PATCH_SIZE_WITH_BORDER*PATCH_SIZE_WITH_BORDER*sizeof(float2));
-    checkCudaErrors(cudaMalloc((void **)&ftmpDevice,  PATCH_SIZE_WITH_BORDER*PATCH_SIZE_WITH_BORDER * sizeof(float2)));
+    ftmp_Host        = (float2*)malloc(PATCH_SIZE_WITH_BORDER*PATCH_SIZE_WITH_BORDER*sizeof(float2));
+    checkCudaErrors(cudaMalloc((void **)&ftmp_Device,  PATCH_SIZE_WITH_BORDER*PATCH_SIZE_WITH_BORDER * sizeof(float2)));
 
 }
 
@@ -86,14 +86,14 @@ void PatchTracker::addPatchToWarp(u_int8_t * ptImage,int row,int col,float px,fl
     u_int8_t * ptPatchMaxHost;
     int Step =  PATCH_SIZE_MAX*PATCH_SIZE_MAX;
 
-    f2_PositionFeaturesHost[i_IndiceFeaturesToWarp].x = px;
-    f2_PositionFeaturesHost[i_IndiceFeaturesToWarp].y = py;
+    f2_PositionFeatures_Host[i_IndiceFeaturesToWarp].x = px;
+    f2_PositionFeatures_Host[i_IndiceFeaturesToWarp].y = py;
 
     int indexCeilx = ceil(px)-8;
     int indexCeily = ceil(py)-8;
     for(int y = 0;y<PATCH_SIZE_MAX;y++)
     {
-        ptPatchMaxHost =  u8_ListPatchsMaxHost + PATCH_SIZE_MAX*y  + Step*i_IndiceFeaturesToWarp;
+        ptPatchMaxHost =  u8_ListPatchsMax_Host + PATCH_SIZE_MAX*y  + Step*i_IndiceFeaturesToWarp;
         for(int x = 0;x<PATCH_SIZE_MAX;x++,ptPatchMaxHost++)
         {
             //if(x>3 && x<13 && y>3 && y<13)
@@ -116,10 +116,10 @@ void PatchTracker::runWarp(void)
 
     cudaChannelFormatDesc desc = cudaCreateChannelDesc<unsigned char>();
 
-    checkCudaErrors(cudaMemcpy2DToArray( Array_PatchsMaxDevice,
+    checkCudaErrors(cudaMemcpy2DToArray( Array_PatchsMax_Device,
                                          0,
                                          0,
-                                         u8_ListPatchsMaxHost,
+                                         u8_ListPatchsMax_Host,
                                          PATCH_SIZE_MAX,
                                          PATCH_SIZE_MAX,
                                          PATCH_SIZE_MAX*i_IndiceFeaturesToWarp,
@@ -127,38 +127,38 @@ void PatchTracker::runWarp(void)
 
     ////////////////////////////////
     // Bind the texture to the array
-    //    checkCudaErrors(cudaBindTexture2D(0,&PatchListInMax,Array_PatchsMaxDevice,&desc,PATCH_SIZE_MAX , PATCH_SIZE_MAX*NB_FEATURE_MAX ,PATCH_SIZE_MAX));
-    checkCudaErrors(cudaBindTextureToArray(PatchListInMax,Array_PatchsMaxDevice));
+    //    checkCudaErrors(cudaBindTexture2D(0,&PatchListInMax,Array_PatchsMax_Device,&desc,PATCH_SIZE_MAX , PATCH_SIZE_MAX*NB_FEATURE_MAX ,PATCH_SIZE_MAX));
+    checkCudaErrors(cudaBindTextureToArray(PatchListInMax,Array_PatchsMax_Device));
 
 
 //    ////////////////////////////////
 //    // copy the position of feature in image
-//    checkCudaErrors( cudaMemcpy(f2_PositionFeaturesDevice, f2_PositionFeaturesHost, i_IndiceFeaturesToWarp*sizeof(float2), cudaMemcpyHostToDevice) );
+//    checkCudaErrors( cudaMemcpy(f2_PositionFeatures_Device, f2_PositionFeatures_Host, i_IndiceFeaturesToWarp*sizeof(float2), cudaMemcpyHostToDevice) );
 
     ////////////////////////////////
     // copy the position of feature in image
-    checkCudaErrors( cudaMemcpy(f2_PositionFeaturesDevice, f2_PositionFeaturesHost, i_IndiceFeaturesToWarp*sizeof(float2), cudaMemcpyHostToDevice) );
+    checkCudaErrors( cudaMemcpy(f2_PositionFeatures_Device, f2_PositionFeatures_Host, i_IndiceFeaturesToWarp*sizeof(float2), cudaMemcpyHostToDevice) );
 
 
     ////////////////////////////////
     // fill the Matrix
-    f_MatrixHost[0] = 1.0;
-    f_MatrixHost[1] = 0.0;
-    f_MatrixHost[2] = 0.0;
-    f_MatrixHost[3] = 1.0;
-    checkCudaErrors( cudaMemcpy(f_MatrixDevice, f_MatrixHost, 4*sizeof(float), cudaMemcpyHostToDevice) );
+    f_Matrix_Host[0] = 1.0;
+    f_Matrix_Host[1] = 0.0;
+    f_Matrix_Host[2] = 0.0;
+    f_Matrix_Host[3] = 1.0;
+    checkCudaErrors( cudaMemcpy(f_Matrix_Device, f_Matrix_Host, 4*sizeof(float), cudaMemcpyHostToDevice) );
 
 
     ////////////////////////////////
     /// Start the process
     dim3 blocks( i_IndiceFeaturesToWarp , 1);
     dim3 threads(PATCH_SIZE_WITH_BORDER, PATCH_SIZE_WITH_BORDER);
-    WarpPatch<<<blocks,threads>>>(u8_PatchsWithBorderDevice,f_MatrixDevice,f2_PositionFeaturesDevice,ftmpDevice);
+    WarpPatch<<<blocks,threads>>>(u8_PatchsWithBorder_Device,f_Matrix_Device,f2_PositionFeatures_Device,ftmp_Device);
 
 
-//    checkCudaErrors( cudaMemcpy(f2_PositionFeaturesHost, f2_PositionFeaturesDevice,PATCH_SIZE_WITH_BORDER*PATCH_SIZE_WITH_BORDER*sizeof(u_int8_t) , cudaMemcpyDeviceToHost) );
-    checkCudaErrors( cudaMemcpy(u8_ListPatchsWithBorderHost, u8_PatchsWithBorderDevice,PATCH_SIZE_WITH_BORDER*PATCH_SIZE_WITH_BORDER*i_IndiceFeaturesToWarp*sizeof(u_int8_t) , cudaMemcpyDeviceToHost) );
-    //checkCudaErrors( cudaMemcpy(ftmpHost, ftmpDevice,PATCH_SIZE_WITH_BORDER*PATCH_SIZE_WITH_BORDER*sizeof(float2) , cudaMemcpyDeviceToHost) );
+//    checkCudaErrors( cudaMemcpy(f2_PositionFeatures_Host, f2_PositionFeatures_Device,PATCH_SIZE_WITH_BORDER*PATCH_SIZE_WITH_BORDER*sizeof(u_int8_t) , cudaMemcpyDeviceToHost) );
+    checkCudaErrors( cudaMemcpy(u8_ListPatchsWithBorder_Host, u8_PatchsWithBorder_Device,PATCH_SIZE_WITH_BORDER*PATCH_SIZE_WITH_BORDER*i_IndiceFeaturesToWarp*sizeof(u_int8_t) , cudaMemcpyDeviceToHost) );
+    //checkCudaErrors( cudaMemcpy(ftmp_Host, ftmp_Device,PATCH_SIZE_WITH_BORDER*PATCH_SIZE_WITH_BORDER*sizeof(float2) , cudaMemcpyDeviceToHost) );
 
 
 }

@@ -15,11 +15,11 @@ class PyrDown_gpu
 public:
 
 
-    u_int8_t *ptImageTmp;
-    u_int8_t *ptImageL0;
-    u_int8_t *ptImageL1;
-    u_int8_t *ptImageL2;
-    u_int8_t *ptImageL3;
+    u_int8_t *ptImageTmp_Device;
+    u_int8_t *ptImageL0_Device;
+    u_int8_t *ptImageL1_Device;
+    u_int8_t *ptImageL2_Device;
+    u_int8_t *ptImageL3_Device;
 
     PyrDown_gpu(int rows, int cols);
     ~PyrDown_gpu();

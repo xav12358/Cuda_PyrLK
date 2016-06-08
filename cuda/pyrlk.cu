@@ -7,6 +7,8 @@
 #include <cv.h>
 #include <opencv2/highgui/highgui.hpp>
 
+#include "imu.h"
+
 //#define NB_FEATURE_MAX                          120
 //#define THRESHOLD                               0.01
 
@@ -512,13 +514,13 @@ PyrLK_gpu::PyrLK_gpu(int rows, int cols, int iNbMaxFeatures):
 
     ///////////////////////////////////
     // Create variable in device memory
-    checkCudaErrors(cudaMalloc((void **)&f2_PointsPrevDevice,  iNbMaxFeatures * sizeof(float2)));
-    checkCudaErrors(cudaMalloc((void **)&f2_PointsNextDevice,  iNbMaxFeatures * sizeof(float2)));
-    checkCudaErrors(cudaMalloc((void **)&u8_StatusDevice,  iNbMaxFeatures * sizeof(u_int8_t)));
+    checkCudaErrors(cudaMalloc((void **)&f2_PointsPrev_Device,  iNbMaxFeatures * sizeof(float2)));
+    checkCudaErrors(cudaMalloc((void **)&f2_PointsNext_Device,  iNbMaxFeatures * sizeof(float2)));
+    checkCudaErrors(cudaMalloc((void **)&u8_Status_Device,  iNbMaxFeatures * sizeof(u_int8_t)));
 
-    //    f2_PointsPrevHost  = (float2*)malloc(iNbMaxFeatures*sizeof(float2));
-    f2_PointsNextHost  = (float2*)malloc(iNbMaxFeatures*sizeof(float2));
-    u8_StatusHost      = (u_int8_t*)malloc(iNbMaxFeatures*sizeof(u_int8_t));
+    //    f2_PointsPrev_Host  = (float2*)malloc(iNbMaxFeatures*sizeof(float2));
+    f2_PointsNext_Host  = (float2*)malloc(iNbMaxFeatures*sizeof(float2));
+    u8_Status_Host      = (u_int8_t*)malloc(iNbMaxFeatures*sizeof(u_int8_t));
 }
 
 
@@ -538,10 +540,10 @@ PyrLK_gpu::~PyrLK_gpu()
 /// \param u8_ImageNextHost
 /// \param h
 /// \param w
-/// \param f2_PointsPrevHost
+/// \param f2_PointsPrev_Host
 /// \param iNbPoints
 ///
-void PyrLK_gpu::run_sparse(u_int8_t  *u8_ImagePrevHost,u_int8_t *u8_ImageNextHost,int h,int w,float2 *f2_PointsPrevHost,int iNbPointsToSearch)
+void PyrLK_gpu::run_sparse(u_int8_t  *u8_ImagePrevHost,u_int8_t *u8_ImageNextHost,int h,int w,float2 *f2_PointsPrev_Host,int iNbPointsToSearch)
 {
 
     //////////////////////////////////////
@@ -554,13 +556,13 @@ void PyrLK_gpu::run_sparse(u_int8_t  *u8_ImagePrevHost,u_int8_t *u8_ImageNextHos
     int lvls = 3;
     for(int i=0;i<iNbPointsToSearch;i++)
     {
-        f2_PointsNextHost[i].x = (f2_PointsPrevHost[i].x)/(1<<(lvls));
-        f2_PointsNextHost[i].y = (f2_PointsPrevHost[i].y)/(1<<(lvls));
+        f2_PointsNext_Host[i].x = (f2_PointsPrev_Host[i].x)/(1<<(lvls));
+        f2_PointsNext_Host[i].y = (f2_PointsPrev_Host[i].y)/(1<<(lvls));
     }
 
 
-    checkCudaErrors( cudaMemcpy(f2_PointsPrevDevice, f2_PointsPrevHost, iNbPointsToSearch*sizeof(float2), cudaMemcpyHostToDevice) );
-    checkCudaErrors( cudaMemcpy(f2_PointsNextDevice, f2_PointsNextHost, iNbPointsToSearch*sizeof(float2), cudaMemcpyHostToDevice) );
+    checkCudaErrors( cudaMemcpy(f2_PointsPrev_Device, f2_PointsPrev_Host, iNbPointsToSearch*sizeof(float2), cudaMemcpyHostToDevice) );
+    checkCudaErrors( cudaMemcpy(f2_PointsNext_Device, f2_PointsNext_Host, iNbPointsToSearch*sizeof(float2), cudaMemcpyHostToDevice) );
 
 
 
@@ -585,38 +587,40 @@ void PyrLK_gpu::run_sparse(u_int8_t  *u8_ImagePrevHost,u_int8_t *u8_ImageNextHos
         {
         case 0:
             // create texture object
-            checkCudaErrors(cudaBindTexture2D(0,&Image_I,ptPyrDownI->ptImageL0,&desc,w/dlevel , h/dlevel,w/dlevel));
-            checkCudaErrors(cudaBindTexture2D(0,&Image_J,ptPyrDownJ->ptImageL0,&desc,w/dlevel , h/dlevel,w/dlevel));
+            checkCudaErrors(cudaBindTexture2D(0,&Image_I,ptPyrDownI->ptImageL0_Device,&desc,w/dlevel , h/dlevel,w/dlevel));
+            checkCudaErrors(cudaBindTexture2D(0,&Image_J,ptPyrDownJ->ptImageL0_Device,&desc,w/dlevel , h/dlevel,w/dlevel));
             break;
 
         case 1:
-            checkCudaErrors(cudaBindTexture2D(0,&Image_I,ptPyrDownI->ptImageL1,&desc,w/dlevel , h/dlevel,w/dlevel));
-            checkCudaErrors(cudaBindTexture2D(0,&Image_J,ptPyrDownJ->ptImageL1,&desc,w/dlevel , h/dlevel,w/dlevel));
+            checkCudaErrors(cudaBindTexture2D(0,&Image_I,ptPyrDownI->ptImageL1_Device,&desc,w/dlevel , h/dlevel,w/dlevel));
+            checkCudaErrors(cudaBindTexture2D(0,&Image_J,ptPyrDownJ->ptImageL1_Device,&desc,w/dlevel , h/dlevel,w/dlevel));
             break;
 
         case 2:
-            checkCudaErrors(cudaBindTexture2D(0,&Image_I,ptPyrDownI->ptImageL2,&desc,w/dlevel , h/dlevel,w/dlevel));
-            checkCudaErrors(cudaBindTexture2D(0,&Image_J,ptPyrDownJ->ptImageL2,&desc,w/dlevel , h/dlevel,w/dlevel));
+            checkCudaErrors(cudaBindTexture2D(0,&Image_I,ptPyrDownI->ptImageL2_Device,&desc,w/dlevel , h/dlevel,w/dlevel));
+            checkCudaErrors(cudaBindTexture2D(0,&Image_J,ptPyrDownJ->ptImageL2_Device,&desc,w/dlevel , h/dlevel,w/dlevel));
             break;
         case 3:
             //dlevel = 8;
             std::cout << "dlevel " << dlevel << std::endl;
-            //            checkCudaErrors(cudaBindTexture2D(0,&Image_I,ptPyrDownI->ptImageL3,&desc,w/dlevel , h/dlevel,w/dlevel));
-            //            checkCudaErrors(cudaBindTexture2D(0,&Image_J,ptPyrDownJ->ptImageL3,&desc,w/dlevel , h/dlevel,w/dlevel));
-            //checkCudaErrors(cudaBindTexture2D(0,&Image_I,ptPyrDownI->ptImageL3,&desc,160 , 120,160));
-            //checkCudaErrors(cudaBindTexture2D(0,&Image_J,ptPyrDownJ->ptImageL3,&desc,160 , 120,160));
+            //            checkCudaErrors(cudaBindTexture2D(0,&Image_I,ptPyrDownI->ptImageL3_Device,&desc,w/dlevel , h/dlevel,w/dlevel));
+            //            checkCudaErrors(cudaBindTexture2D(0,&Image_J,ptPyrDownJ->ptImageL3_Device,&desc,w/dlevel , h/dlevel,w/dlevel));
+            //checkCudaErrors(cudaBindTexture2D(0,&Image_I,ptPyrDownI->ptImageL3_Device,&desc,160 , 120,160));
+            //checkCudaErrors(cudaBindTexture2D(0,&Image_J,ptPyrDownJ->ptImageL3_Device,&desc,160 , 120,160));
             break;
 
         }
 
         //        lkflow_kernel<<<blocks,threads>>>(PrevPt_CU,NextPt_CU,uStatus_CU,ftmp_CU,h/dlevel,w/dlevel,10,i);
-        lkflow_kernel<<<blocks,threads>>>(f2_PointsPrevDevice,f2_PointsNextDevice,u8_StatusDevice,h/dlevel,w/dlevel,13,i);
+        lkflow_kernel<<<blocks,threads>>>(f2_PointsPrev_Device,f2_PointsNext_Device,u8_Status_Device,h/dlevel,w/dlevel,13,i);
 
         checkCudaErrors(cudaUnbindTexture(Image_I));
         checkCudaErrors(cudaUnbindTexture(Image_J));
     }
 
-    checkCudaErrors( cudaMemcpy(f2_PointsNextHost, f2_PointsNextDevice, iNbPointsToSearch*sizeof(float2), cudaMemcpyDeviceToHost) );
+    checkCudaErrors( cudaMemcpy(f2_PointsNext_Host, f2_PointsNext_Device, iNbPointsToSearch*sizeof(float2), cudaMemcpyDeviceToHost) );
+
+
 
 
     cv::Mat *ImageConcat = new cv::Mat(h, w*2, CV_8U);
@@ -633,13 +637,13 @@ void PyrLK_gpu::run_sparse(u_int8_t  *u8_ImagePrevHost,u_int8_t *u8_ImageNextHos
 
     for(int j=0;j<iNbPointsToSearch;j++)
     {
-        cv::line( *ImageConcat, cv::Point( f2_PointsPrevHost[j].x, f2_PointsPrevHost[j].y ), cv::Point( f2_PointsNextHost[j].x+640, f2_PointsNextHost[j].y ) ,cv::Scalar(0,0,0));
-        std::cout << "prev :  "<< f2_PointsPrevHost[j].x << " " << f2_PointsPrevHost[j].y << " Next " << f2_PointsNextHost[j].x << " " << f2_PointsNextHost[j].y << std::endl;
+        cv::line( *ImageConcat, cv::Point( f2_PointsPrev_Host[j].x, f2_PointsPrev_Host[j].y ), cv::Point( f2_PointsNext_Host[j].x+640, f2_PointsNext_Host[j].y ) ,cv::Scalar(0,0,0));
+        std::cout << "prev :  "<< f2_PointsPrev_Host[j].x << " " << f2_PointsPrev_Host[j].y << " Next " << f2_PointsNext_Host[j].x << " " << f2_PointsNext_Host[j].y << std::endl;
     }
 
 
-    cv::imshow("ImageConcat",*ImageConcat);
-    cv::waitKey(-1);
+    //cv::imshow("ImageConcat",*ImageConcat);
+    //cv::waitKey(-1);
 
 }
 
@@ -651,7 +655,7 @@ void PyrLK_gpu::run_sparse(u_int8_t  *u8_ImagePrevHost,u_int8_t *u8_ImageNextHos
 /// \param u8_PatchWithBorderDevice
 /// \param h
 /// \param w
-/// \param f2_PointsPrevHost
+/// \param f2_PointsPrev_Host
 /// \param iNbPoints
 ///
 void PyrLK_gpu::run_sparsePatch(u_int8_t  *u8_ImagePrevDevice, PatchTracker *ptTracker, int h, int w)
@@ -663,12 +667,12 @@ void PyrLK_gpu::run_sparsePatch(u_int8_t  *u8_ImagePrevDevice, PatchTracker *ptT
     int lvls = 3;
     for(int i=0;i<ptTracker->i_IndiceFeaturesToWarp;i++)
     {
-        f2_PointsNextHost[i].x = (ptTracker->f2_PositionFeaturesHost[i].x);
-        f2_PointsNextHost[i].y = (ptTracker->f2_PositionFeaturesHost[i].y);
+        f2_PointsNext_Host[i].x = (ptTracker->f2_PositionFeatures_Host[i].x);
+        f2_PointsNext_Host[i].y = (ptTracker->f2_PositionFeatures_Host[i].y);
     }
 
-    checkCudaErrors( cudaMemcpy(f2_PointsPrevDevice, ptTracker->f2_PositionFeaturesHost, ptTracker->i_IndiceFeaturesToWarp*sizeof(float2), cudaMemcpyHostToDevice) );
-    checkCudaErrors( cudaMemcpy(f2_PointsNextDevice, f2_PointsNextHost, ptTracker->i_IndiceFeaturesToWarp*sizeof(float2), cudaMemcpyHostToDevice) );
+    checkCudaErrors( cudaMemcpy(f2_PointsPrev_Device, ptTracker->f2_PositionFeatures_Host, ptTracker->i_IndiceFeaturesToWarp*sizeof(float2), cudaMemcpyHostToDevice) );
+    checkCudaErrors( cudaMemcpy(f2_PointsNext_Device, f2_PointsNext_Host, ptTracker->i_IndiceFeaturesToWarp*sizeof(float2), cudaMemcpyHostToDevice) );
 
 
     ///////////////////////////////////////////
@@ -685,18 +689,18 @@ void PyrLK_gpu::run_sparsePatch(u_int8_t  *u8_ImagePrevDevice, PatchTracker *ptT
     float2 *f2tmpHost  = (float2*)malloc(PATCH_SIZE_WITH_BORDER*PATCH_SIZE_WITH_BORDER * sizeof(float2));
     checkCudaErrors(cudaMalloc((void **)&f2tmpDevice,  PATCH_SIZE_WITH_BORDER*PATCH_SIZE_WITH_BORDER * sizeof(float2)));
 
-    lkflowSparse_kernel<<<blocks,threads>>>(ptTracker->u8_PatchsWithBorderDevice,
-                                            ptTracker->f2_PositionFeaturesDevice,
-                                            f2_PointsNextDevice,
-                                            u8_StatusDevice,
+    lkflowSparse_kernel<<<blocks,threads>>>(ptTracker->u8_PatchsWithBorder_Device,
+                                            ptTracker->f2_PositionFeatures_Device,
+                                            f2_PointsNext_Device,
+                                            u8_Status_Device,
                                             h,
                                             w,
                                             iter++,
                                             f2tmpDevice);
 
-    /*float2 *ptf2_PointsNextHost  = (float2*)malloc(256*sizeof(float2));
-    float2 *ptf2_PointsPrevDevice;
-    checkCudaErrors(cudaMalloc((void **)&ptf2_PointsPrevDevice,  256 * sizeof(float2)));
+    /*float2 *ptf2_PointsNext_Host  = (float2*)malloc(256*sizeof(float2));
+    float2 *ptf2_PointsPrev_Device;
+    checkCudaErrors(cudaMalloc((void **)&ptf2_PointsPrev_Device,  256 * sizeof(float2)));
 */
 
     checkCudaErrors(cudaMemcpy(f2tmpHost,f2tmpDevice, PATCH_SIZE_WITH_BORDER*PATCH_SIZE_WITH_BORDER * sizeof(float2),cudaMemcpyDeviceToHost));
@@ -723,10 +727,10 @@ void PyrLK_gpu::run_sparsePatch(u_int8_t  *u8_ImagePrevDevice, PatchTracker *ptT
     }
 
 
-    checkCudaErrors(cudaMemcpy(f2_PointsNextHost,f2_PointsNextDevice, ptTracker->i_IndiceFeaturesToWarp*sizeof(float2), cudaMemcpyDeviceToHost) );
+    checkCudaErrors(cudaMemcpy(f2_PointsNext_Host,f2_PointsNext_Device, ptTracker->i_IndiceFeaturesToWarp*sizeof(float2), cudaMemcpyDeviceToHost) );
 
     for(int i=0;i<ptTracker->i_IndiceFeaturesToWarp;i++)
     {
-        std::cout << "Prev " << ptTracker->f2_PositionFeaturesHost[i].x << "  " << ptTracker->f2_PositionFeaturesHost[i].y << " Next " << f2_PointsNextHost[i].x << "  " << f2_PointsNextHost[i].y << std::endl;
+        std::cout << "Prev " << ptTracker->f2_PositionFeatures_Host[i].x << "  " << ptTracker->f2_PositionFeatures_Host[i].y << " Next " << f2_PointsNext_Host[i].x << "  " << f2_PointsNext_Host[i].y << std::endl;
     }
 }

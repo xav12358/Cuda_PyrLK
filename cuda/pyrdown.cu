@@ -86,11 +86,11 @@ __global__ void PyrDown_y_g(u_int8_t *ptGrayIn,u_int8_t *ptGrayOut,  int  w, int
 ///
 PyrDown_gpu::PyrDown_gpu(int rows,int cols)
 {
-    checkCudaErrors(cudaMalloc((void **)&ptImageL0,  rows * cols * sizeof(u_int8_t)));
-    checkCudaErrors(cudaMalloc((void **)&ptImageTmp, rows * cols * sizeof(u_int8_t)));
-    checkCudaErrors(cudaMalloc((void **)&ptImageL1,  rows * cols * sizeof(u_int8_t)/4));
-    checkCudaErrors(cudaMalloc((void **)&ptImageL2,  rows * cols * sizeof(u_int8_t)/16));
-//    checkCudaErrors(cudaMalloc((void **)&ptImageL3,  rows * cols * sizeof(u_int8_t)/64));
+    checkCudaErrors(cudaMalloc((void **)&ptImageL0_Device,  rows * cols * sizeof(u_int8_t)));
+    checkCudaErrors(cudaMalloc((void **)&ptImageTmp_Device, rows * cols * sizeof(u_int8_t)));
+    checkCudaErrors(cudaMalloc((void **)&ptImageL1_Device,  rows * cols * sizeof(u_int8_t)/4));
+    checkCudaErrors(cudaMalloc((void **)&ptImageL2_Device,  rows * cols * sizeof(u_int8_t)/16));
+//    checkCudaErrors(cudaMalloc((void **)&ptImageL3_Device,  rows * cols * sizeof(u_int8_t)/64));
 }
 
 ///////////////////////////////////
@@ -99,11 +99,11 @@ PyrDown_gpu::PyrDown_gpu(int rows,int cols)
 PyrDown_gpu::~PyrDown_gpu()
 {
     // free device memory
-    checkCudaErrors(cudaFree(ptImageL0));
-    checkCudaErrors(cudaFree(ptImageTmp));
-    checkCudaErrors(cudaFree(ptImageL1));
-    checkCudaErrors(cudaFree(ptImageL2));
-    checkCudaErrors(cudaFree(ptImageL3));
+    checkCudaErrors(cudaFree(ptImageL0_Device));
+    checkCudaErrors(cudaFree(ptImageTmp_Device));
+    checkCudaErrors(cudaFree(ptImageL1_Device));
+    checkCudaErrors(cudaFree(ptImageL2_Device));
+    checkCudaErrors(cudaFree(ptImageL3_Device));
 }
 
 
@@ -115,47 +115,47 @@ PyrDown_gpu::~PyrDown_gpu()
 ///
 void PyrDown_gpu::run(int rows,int cols,u_int8_t *ptSrc)
 {
-    checkCudaErrors(cudaMemcpy(ptImageL0 , ptSrc, rows * cols * sizeof(u_int8_t), cudaMemcpyHostToDevice));
+    checkCudaErrors(cudaMemcpy(ptImageL0_Device , ptSrc, rows * cols * sizeof(u_int8_t), cudaMemcpyHostToDevice));
 
     dim3 blocks_x(ceil(cols / ( BLOCK_SIZE_X)), ceil(rows / BLOCK_SIZE_Y));
     dim3 threads_x(BLOCK_SIZE_X, BLOCK_SIZE_Y);
-    PyrDown_x_g<<<blocks_x,threads_x>>>(ptImageL0,ptImageTmp, cols,rows);
+    PyrDown_x_g<<<blocks_x,threads_x>>>(ptImageL0_Device,ptImageTmp_Device, cols,rows);
 
     dim3 blocks_y(ceil(cols / ( BLOCK_SIZE_X)/2.0),ceil( rows / BLOCK_SIZE_Y/2.0));
     dim3 threads_y(BLOCK_SIZE_X, BLOCK_SIZE_Y);
-    PyrDown_y_g<<<blocks_y,threads_y>>>(ptImageTmp,ptImageL1,  cols/2, rows/2);
+    PyrDown_y_g<<<blocks_y,threads_y>>>(ptImageTmp_Device,ptImageL1_Device,  cols/2, rows/2);
 
 //    cv::Mat Image1(rows/2,cols/2,CV_8U);
-//    checkCudaErrors(cudaMemcpy(Image1.data , ptImageL1, rows * cols * sizeof(u_int8_t)/4, cudaMemcpyDeviceToHost));
+//    checkCudaErrors(cudaMemcpy(Image1.data , ptImageL1_Device, rows * cols * sizeof(u_int8_t)/4, cudaMemcpyDeviceToHost));
 //    cv::imshow("Image L1",Image1);
 //    cv::waitKey(-1);
 
 
     dim3 blocks_x_L1(ceil(cols / ( BLOCK_SIZE_X/2.0)), ceil(rows / BLOCK_SIZE_Y/2.0));
     dim3 threads_x_L1(BLOCK_SIZE_X, BLOCK_SIZE_Y);
-    PyrDown_x_g<<<blocks_x_L1,threads_x_L1>>>(ptImageL1,ptImageTmp,  cols/2, rows/2);
+    PyrDown_x_g<<<blocks_x_L1,threads_x_L1>>>(ptImageL1_Device,ptImageTmp_Device,  cols/2, rows/2);
 
     dim3 blocks_y_L1(ceil(cols /  BLOCK_SIZE_X/4.0), ceil(rows / BLOCK_SIZE_Y/4.0));
     dim3 threads_y_L1(BLOCK_SIZE_X, BLOCK_SIZE_Y);
-    PyrDown_y_g<<<blocks_y_L1,threads_y_L1>>>(ptImageTmp,ptImageL2,  cols/4, rows/4);
+    PyrDown_y_g<<<blocks_y_L1,threads_y_L1>>>(ptImageTmp_Device,ptImageL2_Device,  cols/4, rows/4);
 
 
 //    cv::Mat Image2(rows/4,cols/4,CV_8U);
-//    checkCudaErrors(cudaMemcpy(Image2.data , ptImageL2, rows * cols * sizeof(u_int8_t)/16, cudaMemcpyDeviceToHost));
+//    checkCudaErrors(cudaMemcpy(Image2.data , ptImageL2_Device, rows * cols * sizeof(u_int8_t)/16, cudaMemcpyDeviceToHost));
 //    cv::imshow("Image L2",Image2);
 //    cv::waitKey(-1);
 
 
 //    dim3 blocks_x_L2(ceil(cols /  BLOCK_SIZE_X /4.0), ceil(rows / BLOCK_SIZE_Y/4.0));
 //    dim3 threads_x_L2(BLOCK_SIZE_X, BLOCK_SIZE_Y);
-//    PyrDown_x_g<<<blocks_x_L2,threads_x_L2>>>(ptImageL2,ptImageTmp,  cols/4, rows/4);
+//    PyrDown_x_g<<<blocks_x_L2,threads_x_L2>>>(ptImageL2_Device,ptImageTmp_Device,  cols/4, rows/4);
 
 //    dim3 blocks_y_L2(ceil(cols /  BLOCK_SIZE_X/8.0), ceil(rows / BLOCK_SIZE_Y/8.0));
 //    dim3 threads_y_L2(BLOCK_SIZE_X, BLOCK_SIZE_Y);
-//    PyrDown_y_g<<<blocks_y_L2,threads_y_L2>>>(ptImageTmp,ptImageL3,  cols/8, rows/8);
+//    PyrDown_y_g<<<blocks_y_L2,threads_y_L2>>>(ptImageTmp_Device,ptImageL3_Device,  cols/8, rows/8);
 
 //    cv::Mat Image3(rows/8,cols/8,CV_8U);
-//    checkCudaErrors(cudaMemcpy(Image3.data , ptImageL3, rows * cols * sizeof(u_int8_t)/64, cudaMemcpyDeviceToHost));
+//    checkCudaErrors(cudaMemcpy(Image3.data , ptImageL3_Device, rows * cols * sizeof(u_int8_t)/64, cudaMemcpyDeviceToHost));
 //    cv::imshow("Image L3",Image3);
 //    cv::waitKey(-1);
 
