@@ -117,11 +117,11 @@ void PyrDown_gpu::run(int rows,int cols,u_int8_t *ptSrc)
 {
     checkCudaErrors(cudaMemcpy(ptImageL0_Device , ptSrc, rows * cols * sizeof(u_int8_t), cudaMemcpyHostToDevice));
 
-    dim3 blocks_x(ceil(cols / ( BLOCK_SIZE_X)), ceil(rows / BLOCK_SIZE_Y));
+    dim3 blocks_x(ceil((float)cols / ( BLOCK_SIZE_X)), ceil((float)rows / BLOCK_SIZE_Y));
     dim3 threads_x(BLOCK_SIZE_X, BLOCK_SIZE_Y);
     PyrDown_x_g<<<blocks_x,threads_x>>>(ptImageL0_Device,ptImageTmp_Device, cols,rows);
 
-    dim3 blocks_y(ceil(cols / ( BLOCK_SIZE_X)/2.0),ceil( rows / BLOCK_SIZE_Y/2.0));
+    dim3 blocks_y(ceil((float)cols / ( BLOCK_SIZE_X)/2.0),ceil((float) rows / BLOCK_SIZE_Y/2.0));
     dim3 threads_y(BLOCK_SIZE_X, BLOCK_SIZE_Y);
     PyrDown_y_g<<<blocks_y,threads_y>>>(ptImageTmp_Device,ptImageL1_Device,  cols/2, rows/2);
 
